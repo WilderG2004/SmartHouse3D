@@ -1,0 +1,1496 @@
+[
+  {
+    "id": "cfg_influx",
+    "type": "influxdb",
+    "hostname": "influxdb",
+    "port": "8086",
+    "protocol": "http",
+    "database": "database",
+    "name": "InfluxDB · Casa_IoT · escritura",
+    "usetls": false,
+    "tls": "",
+    "influxdbVersion": "2.0",
+    "url": "https://us-east-1-1.aws.cloud2.influxdata.com",
+    "timeout": "10",
+    "rejectUnauthorized": true
+  },
+  {
+    "id": "cfg_influx_read",
+    "type": "influxdb",
+    "hostname": "influxdb",
+    "port": "8086",
+    "protocol": "http",
+    "database": "database",
+    "name": "InfluxDB · Casa_IoT · lectura",
+    "usetls": false,
+    "tls": "",
+    "influxdbVersion": "2.0",
+    "url": "https://us-east-1-1.aws.cloud2.influxdata.com",
+    "timeout": "10",
+    "rejectUnauthorized": true
+  },
+  {
+    "id": "cfg_ws",
+    "type": "websocket-listener",
+    "path": "/ws/casa-iot",
+    "wholemsg": "false"
+  },
+  {
+    "id": "tab_casa",
+    "type": "tab",
+    "label": "Casa IoT · Gemelo digital",
+    "disabled": false,
+    "info": "Backend IoT de la casa inteligente: Node-RED genera TODOS los datos (sensores y dispositivos), calcula las alertas, los guarda en InfluxDB y los consulta; el frontend (React) solo muestra y envía órdenes.\nGenerado con infra/nodered/tools/build-flows.mts"
+  },
+  {
+    "id": "casa_c_AIniciali",
+    "type": "comment",
+    "name": "A · Inicialización — configuración, estado y reinicio",
+    "info": "Pulsa el botón del nodo «Reiniciar simulación» para volver al estado inicial (todos los clientes reciben un snapshot nuevo).",
+    "x": 330,
+    "y": 30,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_inj_init",
+    "type": "inject",
+    "name": "Reiniciar simulación",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "0.5",
+    "topic": "",
+    "payload": "init",
+    "payloadType": "str",
+    "x": 160,
+    "y": 70,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_inicializar"
+      ]
+    ]
+  },
+  {
+    "id": "casa_inicializar",
+    "type": "function",
+    "name": "Configuración y estado inicial",
+    "func": "// Se ejecuta al desplegar y al pulsar el botón del nodo «Reiniciar simulación».\n// La configuración se genera desde src/config/house.config.ts (ver tools/build-flows.mts).\nconst cfg = {\n \"LIGHTS\": [\n  {\n   \"id\": \"Luz_Sala_Principal_1\",\n   \"label\": \"Sala principal 1\",\n   \"room\": \"sala_principal\"\n  },\n  {\n   \"id\": \"Luz_Sala_Principal_2\",\n   \"label\": \"Sala principal 2\",\n   \"room\": \"sala_principal\"\n  },\n  {\n   \"id\": \"Luz_Sala_Entrada_1\",\n   \"label\": \"Sala de entrada 1\",\n   \"room\": \"sala_entrada\"\n  },\n  {\n   \"id\": \"Luz_Sala_Entrada_2\",\n   \"label\": \"Sala de entrada 2\",\n   \"room\": \"sala_entrada\"\n  },\n  {\n   \"id\": \"Luz_Sala_Estudio_1\",\n   \"label\": \"Sala de estudio 1\",\n   \"room\": \"sala_estudio\"\n  },\n  {\n   \"id\": \"Luz_Sala_Estudio_2\",\n   \"label\": \"Sala de estudio 2\",\n   \"room\": \"sala_estudio\"\n  },\n  {\n   \"id\": \"Luz_Concina_1\",\n   \"label\": \"Cocina 1\",\n   \"room\": \"cocina\"\n  },\n  {\n   \"id\": \"Luz_Concina_2\",\n   \"label\": \"Cocina 2\",\n   \"room\": \"cocina\"\n  },\n  {\n   \"id\": \"Luz_Lavanderia_1\",\n   \"label\": \"Lavandería 1\",\n   \"room\": \"lavanderia\"\n  },\n  {\n   \"id\": \"Luz_Lavanderia_2\",\n   \"label\": \"Lavandería 2\",\n   \"room\": \"lavanderia\"\n  },\n  {\n   \"id\": \"Luz_Garage\",\n   \"label\": \"Garaje\",\n   \"room\": \"garaje\"\n  },\n  {\n   \"id\": \"Luz_Dormitorio_Principal\",\n   \"label\": \"Dormitorio principal\",\n   \"room\": \"dormitorio_principal\"\n  },\n  {\n   \"id\": \"Luz_Closet_Principal\",\n   \"label\": \"Closet\",\n   \"room\": \"dormitorio_principal\"\n  },\n  {\n   \"id\": \"Luz_Dormitorio_2\",\n   \"label\": \"Dormitorio 2\",\n   \"room\": \"dormitorio_2\"\n  },\n  {\n   \"id\": \"Luz_Dormitorio_3\",\n   \"label\": \"Dormitorio 3\",\n   \"room\": \"dormitorio_3\"\n  },\n  {\n   \"id\": \"Luz_Baño_Principal\",\n   \"label\": \"Baño principal\",\n   \"room\": \"bano_principal\"\n  },\n  {\n   \"id\": \"Luz_Baño_Visitas\",\n   \"label\": \"Baño de visitas\",\n   \"room\": \"bano_visitas\"\n  }\n ],\n \"ROOMS\": [\n  {\n   \"id\": \"sala_principal\",\n   \"label\": \"Sala principal\"\n  },\n  {\n   \"id\": \"sala_entrada\",\n   \"label\": \"Sala de entrada\"\n  },\n  {\n   \"id\": \"sala_estudio\",\n   \"label\": \"Sala de estudio\"\n  },\n  {\n   \"id\": \"cocina\",\n   \"label\": \"Cocina\"\n  },\n  {\n   \"id\": \"lavanderia\",\n   \"label\": \"Lavandería\"\n  },\n  {\n   \"id\": \"garaje\",\n   \"label\": \"Garaje\"\n  },\n  {\n   \"id\": \"dormitorio_principal\",\n   \"label\": \"Dormitorio principal\"\n  },\n  {\n   \"id\": \"dormitorio_2\",\n   \"label\": \"Dormitorio 2\"\n  },\n  {\n   \"id\": \"dormitorio_3\",\n   \"label\": \"Dormitorio 3\"\n  },\n  {\n   \"id\": \"bano_principal\",\n   \"label\": \"Baño principal\"\n  },\n  {\n   \"id\": \"bano_visitas\",\n   \"label\": \"Baño de visitas\"\n  }\n ],\n \"SMOKE\": {\n  \"id\": \"Sensor_Humo_Cocina\",\n  \"label\": \"Humo · Cocina\",\n  \"normalPpm\": 12,\n  \"alarmThresholdPpm\": 400,\n  \"alarmRoom\": \"Cocina\"\n },\n \"PIRS\": [\n  {\n   \"id\": \"Sensor_PIR_Entrada_Sala_Principal\",\n   \"label\": \"Entrada · Sala principal\",\n   \"lightIds\": [\n    \"Luz_Sala_Entrada_1\",\n    \"Luz_Sala_Entrada_2\"\n   ],\n   \"primary\": true\n  },\n  {\n   \"id\": \"Sensor_PIR_Entrada_Cocina\",\n   \"label\": \"Entrada · Cocina\",\n   \"lightIds\": [\n    \"Luz_Concina_2\",\n    \"Luz_Lavanderia_1\"\n   ]\n  },\n  {\n   \"id\": \"Sensor_PIR_Entrada_Dormitorio_Principal\",\n   \"label\": \"Entrada · Dormitorio principal\",\n   \"lightIds\": [\n    \"Luz_Dormitorio_Principal\",\n    \"Luz_Closet_Principal\"\n   ]\n  },\n  {\n   \"id\": \"Sensor_PIR_Entrada_Lavaneria\",\n   \"label\": \"Entrada · Lavandería\",\n   \"lightIds\": [\n    \"Luz_Lavanderia_2\",\n    \"Luz_Garage\"\n   ]\n  },\n  {\n   \"id\": \"Sensor_PIR_Entrada_Lavaneria_2\",\n   \"label\": \"Entrada · Lavandería 2\",\n   \"lightIds\": [\n    \"Luz_Lavanderia_1\",\n    \"Luz_Lavanderia_2\"\n   ]\n  }\n ],\n \"PIR_HOLD_MS\": 8000,\n \"DOORS\": [\n  {\n   \"id\": \"Sensor_Puerta_Entrada\",\n   \"label\": \"Puerta de entrada\",\n   \"sensor\": true\n  },\n  {\n   \"id\": \"Sensor_Puerta_Garage\",\n   \"label\": \"Puerta del garaje\",\n   \"sensor\": true\n  },\n  {\n   \"id\": \"Puerta_Sala_Principal\",\n   \"label\": \"Entrada · Sala principal\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Cocina\",\n   \"label\": \"Entrada · Cocina\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Lavanderia_2\",\n   \"label\": \"Entrada · Lavandería 2\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Lavanderia\",\n   \"label\": \"Entrada · Lavandería\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Dormitorio_Principal\",\n   \"label\": \"Entrada · Dormitorio principal\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Dormitorio_Principal_Interior\",\n   \"label\": \"Interior · Dormitorio principal\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Dormitorio_3\",\n   \"label\": \"Interior · Dormitorio 3\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Sala_Estudio\",\n   \"label\": \"Interior · Sala de estudio\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Bano_Visitas\",\n   \"label\": \"Interior · Baño de visitas\",\n   \"sensor\": false\n  },\n  {\n   \"id\": \"Puerta_Pasillo\",\n   \"label\": \"Interior · Pasillo\",\n   \"sensor\": false\n  }\n ],\n \"METER\": {\n  \"id\": \"Medidor_General\",\n  \"label\": \"Medidor general\",\n  \"baseLoadW\": 80,\n  \"lightMaxW\": 15,\n  \"energyTimeScale\": 60\n },\n \"CLIMATE\": {\n  \"comfortMin\": 22,\n  \"comfortMax\": 26,\n  \"outdoor\": {\n   \"mean\": 29,\n   \"amp\": 5,\n   \"peakHour\": 15\n  },\n  \"insulation\": 3,\n  \"gainPerKw\": 1.5,\n  \"leakPerTick\": 0.01,\n  \"coolPerTick\": 0.16,\n  \"hysteresis\": 0.5,\n  \"acSetpointMin\": 16,\n  \"acSetpointMax\": 30\n },\n \"AC_POWER\": {\n  \"coolingW\": 1100,\n  \"fanW\": 60,\n  \"fanFactor\": {\n   \"low\": 0.75,\n   \"mid\": 1,\n   \"high\": 1.25\n  }\n },\n \"AIR_CONDITIONERS\": [\n  {\n   \"id\": \"AC_Sala_Principal\",\n   \"label\": \"Sala principal\",\n   \"room\": \"sala_principal\"\n  },\n  {\n   \"id\": \"AC_Dormitorio_Principal\",\n   \"label\": \"Dormitorio principal\",\n   \"room\": \"dormitorio_principal\"\n  },\n  {\n   \"id\": \"AC_Dormitorio_2\",\n   \"label\": \"Dormitorio 2\",\n   \"room\": \"dormitorio_2\"\n  },\n  {\n   \"id\": \"AC_Dormitorio_3\",\n   \"label\": \"Dormitorio 3\",\n   \"room\": \"dormitorio_3\"\n  },\n  {\n   \"id\": \"AC_Sala_Estudio\",\n   \"label\": \"Sala de estudio\",\n   \"room\": \"sala_estudio\"\n  },\n  {\n   \"id\": \"AC_Cocina\",\n   \"label\": \"Cocina\",\n   \"room\": \"cocina\"\n  }\n ],\n \"PLUGS\": [\n  {\n   \"id\": \"Enchufe_TV_Sala\",\n   \"label\": \"Televisor\",\n   \"room\": \"sala_principal\",\n   \"watts\": 110,\n   \"initialOn\": true\n  },\n  {\n   \"id\": \"Enchufe_PC_Estudio\",\n   \"label\": \"Computador\",\n   \"room\": \"sala_estudio\",\n   \"watts\": 180\n  },\n  {\n   \"id\": \"Enchufe_Cafetera\",\n   \"label\": \"Cafetera\",\n   \"room\": \"cocina\",\n   \"watts\": 850,\n   \"autoOffSec\": 20\n  },\n  {\n   \"id\": \"Enchufe_Lavadora\",\n   \"label\": \"Lavadora\",\n   \"room\": \"lavanderia\",\n   \"watts\": 450,\n   \"profile\": \"cycle\"\n  },\n  {\n   \"id\": \"Enchufe_Ventilador_D2\",\n   \"label\": \"Ventilador\",\n   \"room\": \"dormitorio_2\",\n   \"watts\": 55\n  },\n  {\n   \"id\": \"Enchufe_Cargador_DP\",\n   \"label\": \"Cargador\",\n   \"room\": \"dormitorio_principal\",\n   \"watts\": 20,\n   \"initialOn\": true\n  }\n ],\n \"SCENES\": [\n  {\n   \"id\": \"llegue\",\n   \"label\": \"Llegué a casa\",\n   \"hint\": \"Luces de entrada y sala, A/C en la sala\",\n   \"icon\": \"home\",\n   \"lights\": {\n    \"Luz_Sala_Entrada_1\": {\n     \"intensity\": 80\n    },\n    \"Luz_Sala_Entrada_2\": {\n     \"intensity\": 80\n    },\n    \"Luz_Sala_Principal_1\": {\n     \"intensity\": 70\n    },\n    \"Luz_Sala_Principal_2\": {\n     \"intensity\": 70\n    }\n   },\n   \"lightsOthers\": \"keep\",\n   \"ac\": {\n    \"AC_Sala_Principal\": {\n     \"on\": true,\n     \"setpoint\": 24,\n     \"fan\": \"mid\"\n    }\n   },\n   \"security\": \"disarmed\"\n  },\n  {\n   \"id\": \"cine\",\n   \"label\": \"Cine\",\n   \"hint\": \"Sala tenue en ámbar, TV encendida\",\n   \"icon\": \"film\",\n   \"lights\": {\n    \"Luz_Sala_Principal_1\": {\n     \"intensity\": 12,\n     \"color\": \"#ff9f5a\"\n    },\n    \"Luz_Sala_Principal_2\": {\n     \"intensity\": 12,\n     \"color\": \"#ff9f5a\"\n    }\n   },\n   \"lightsOthers\": \"off\",\n   \"ac\": {\n    \"AC_Sala_Principal\": {\n     \"on\": true,\n     \"setpoint\": 23,\n     \"fan\": \"low\"\n    }\n   },\n   \"plugs\": {\n    \"Enchufe_TV_Sala\": true\n   }\n  },\n  {\n   \"id\": \"estudio\",\n   \"label\": \"Estudio\",\n   \"hint\": \"Luz fría, computador y A/C del estudio\",\n   \"icon\": \"book\",\n   \"lights\": {\n    \"Luz_Sala_Estudio_1\": {\n     \"intensity\": 100,\n     \"color\": \"#e6f2ff\"\n    },\n    \"Luz_Sala_Estudio_2\": {\n     \"intensity\": 100,\n     \"color\": \"#e6f2ff\"\n    }\n   },\n   \"lightsOthers\": \"off\",\n   \"ac\": {\n    \"AC_Sala_Estudio\": {\n     \"on\": true,\n     \"setpoint\": 24,\n     \"fan\": \"mid\"\n    }\n   },\n   \"plugs\": {\n    \"Enchufe_PC_Estudio\": true\n   }\n  },\n  {\n   \"id\": \"dormir\",\n   \"label\": \"Dormir\",\n   \"hint\": \"Todo apagado, A/C suave, casa armada\",\n   \"icon\": \"moon\",\n   \"lights\": {},\n   \"lightsOthers\": \"off\",\n   \"ac\": {\n    \"AC_Dormitorio_Principal\": {\n     \"on\": true,\n     \"setpoint\": 25,\n     \"fan\": \"low\"\n    }\n   },\n   \"acOthers\": \"off\",\n   \"plugs\": {\n    \"Enchufe_Cargador_DP\": true\n   },\n   \"plugsOthers\": \"off\",\n   \"doorsClose\": true,\n   \"security\": \"home\"\n  },\n  {\n   \"id\": \"fuera\",\n   \"label\": \"Salir de casa\",\n   \"hint\": \"Apaga todo, cierra puertas y arma la alarma\",\n   \"icon\": \"logout\",\n   \"lights\": {},\n   \"lightsOthers\": \"off\",\n   \"acOthers\": \"off\",\n   \"plugsOthers\": \"off\",\n   \"doorsClose\": true,\n   \"security\": \"away\"\n  }\n ],\n \"SENSORS\": {\n  \"luxFactor\": {\n   \"default\": 0.8,\n   \"garaje\": 0.3,\n   \"bano_principal\": 0.4,\n   \"bano_visitas\": 0.4,\n   \"lavanderia\": 0.5\n  },\n  \"luxMaxIndoor\": 450,\n  \"luxPerLightAt100\": 180,\n  \"noise\": {\n   \"temperature\": 0.12,\n   \"humidity\": 0.8,\n   \"lux\": 12\n  },\n  \"events\": {\n   \"heatKitchen\": {\n    \"everySec\": 300,\n    \"durationSec\": 75,\n    \"toC\": 36\n   },\n   \"humidityBath\": {\n    \"everySec\": 360,\n    \"durationSec\": 60,\n    \"toPct\": 93\n   }\n  }\n },\n \"ALERTS\": {\n  \"tempHighC\": 32,\n  \"tempHighClearC\": 31,\n  \"humidityHighPct\": 85,\n  \"humidityHighClearPct\": 80,\n  \"powerHighW\": 1500,\n  \"powerHighClearW\": 1350\n },\n \"INITIAL_LIGHTS_ON\": {\n  \"Luz_Sala_Principal_1\": 80,\n  \"Luz_Sala_Principal_2\": 80,\n  \"Luz_Concina_1\": 100\n },\n \"DEFAULT_LIGHT_COLOR\": \"#ffe2b0\",\n \"INFLUX\": {\n  \"org\": \"casa\",\n  \"bucket\": \"Casa_IoT\",\n  \"persistEverySec\": 2\n }\n};\nglobal.set('cfg', cfg);\n\n// ── Seguridad del canal (ver docs/seguridad-iot.md) ────────────────────────────────────────────\n// La POLÍTICA (qué rol puede qué, límites, esquemas) viene generada y no contiene secretos.\n// Las CLAVES salen de variables de entorno y NUNCA se guardan en el repositorio:\n//   CASA_PAIRING_KEY  clave de emparejamiento del rol Operador      (control de luces, aires, enchufes, puertas, escenas)\n//   CASA_ADMIN_KEY    clave del rol Administrador                    (simulaciones, hora simulada, revocar sesiones)\n//   CASA_DEVICE_KEY   clave maestra de la que se derivan las claves de cada dispositivo simulado (firmas HMAC)\n//   *_PREVIOUS        la clave anterior, solo durante una rotación (se aceptan las dos a la vez)\n// Si falta alguna, se crea una TEMPORAL solo para esta ejecución (modo desarrollo) y se muestra en el registro de Node-RED.\n// «Reiniciar simulación» NO cambia claves ni desconecta sesiones: el runtime de seguridad se crea una sola vez.\nconst sec = {\n \"version\": 1,\n \"roles\": [\n  \"lector\",\n  \"operador\",\n  \"administrador\"\n ],\n \"kinds\": {\n  \"snapshot.request\": {\n   \"role\": 0,\n   \"keys\": [\n    \"kind\"\n   ],\n   \"note\": \"Pide el estado completo (lo usa la interfaz al conectar)\"\n  },\n  \"session.hello\": {\n   \"role\": 0,\n   \"keys\": [\n    \"kind\",\n    \"key\"\n   ],\n   \"note\": \"Empareja la sesión con una clave (Operador o Administrador)\"\n  },\n  \"session.logout\": {\n   \"role\": 0,\n   \"keys\": [\n    \"kind\"\n   ],\n   \"note\": \"Vuelve a solo lectura\"\n  },\n  \"confirm\": {\n   \"role\": 0,\n   \"keys\": [\n    \"kind\",\n    \"code\"\n   ],\n   \"note\": \"Segundo paso de una acción sensible (código de un solo uso)\"\n  },\n  \"light.set\": {\n   \"role\": 1,\n   \"keys\": [\n    \"kind\",\n    \"id\",\n    \"patch\"\n   ],\n   \"note\": \"Luces: encender, intensidad y color\"\n  },\n  \"ac.set\": {\n   \"role\": 1,\n   \"keys\": [\n    \"kind\",\n    \"id\",\n    \"patch\"\n   ],\n   \"note\": \"Aire acondicionado\"\n  },\n  \"plug.set\": {\n   \"role\": 1,\n   \"keys\": [\n    \"kind\",\n    \"id\",\n    \"on\"\n   ],\n   \"note\": \"Enchufes inteligentes\"\n  },\n  \"door.set\": {\n   \"role\": 1,\n   \"keys\": [\n    \"kind\",\n    \"id\",\n    \"open\"\n   ],\n   \"note\": \"Puertas (abrir una puerta del perímetro pide confirmación)\"\n  },\n  \"scene.apply\": {\n   \"role\": 1,\n   \"keys\": [\n    \"kind\",\n    \"id\"\n   ],\n   \"note\": \"Escenas (las que desarman la alarma piden confirmación)\"\n  },\n  \"security.set\": {\n   \"role\": 1,\n   \"keys\": [\n    \"kind\",\n    \"mode\"\n   ],\n   \"note\": \"Alarma: armar, o desarmar (esto pide confirmación)\"\n  },\n  \"security.simulateIntrusion\": {\n   \"role\": 2,\n   \"keys\": [\n    \"kind\"\n   ],\n   \"note\": \"Simula una intrusión (demostración)\"\n  },\n  \"smoke.simulate\": {\n   \"role\": 2,\n   \"keys\": [\n    \"kind\",\n    \"active\"\n   ],\n   \"note\": \"Simula fuga de humo\"\n  },\n  \"heat.simulate\": {\n   \"role\": 2,\n   \"keys\": [\n    \"kind\",\n    \"active\"\n   ],\n   \"note\": \"Simula calor en la cocina\"\n  },\n  \"humidity.simulate\": {\n   \"role\": 2,\n   \"keys\": [\n    \"kind\",\n    \"active\"\n   ],\n   \"note\": \"Simula humedad en el baño\"\n  },\n  \"pir.simulate\": {\n   \"role\": 2,\n   \"keys\": [\n    \"kind\",\n    \"id\"\n   ],\n   \"note\": \"Simula movimiento en un detector\"\n  },\n  \"world.setHour\": {\n   \"role\": 2,\n   \"keys\": [\n    \"kind\",\n    \"hour\"\n   ],\n   \"note\": \"Cambia la hora simulada\"\n  },\n  \"admin.revoke\": {\n   \"role\": 2,\n   \"keys\": [\n    \"kind\"\n   ],\n   \"note\": \"Revoca todas las demás sesiones de control y congela el emparejamiento unos minutos\"\n  }\n },\n \"ids\": {\n  \"light\": [\n   \"Luz_Sala_Principal_1\",\n   \"Luz_Sala_Principal_2\",\n   \"Luz_Sala_Entrada_1\",\n   \"Luz_Sala_Entrada_2\",\n   \"Luz_Sala_Estudio_1\",\n   \"Luz_Sala_Estudio_2\",\n   \"Luz_Concina_1\",\n   \"Luz_Concina_2\",\n   \"Luz_Lavanderia_1\",\n   \"Luz_Lavanderia_2\",\n   \"Luz_Garage\",\n   \"Luz_Dormitorio_Principal\",\n   \"Luz_Closet_Principal\",\n   \"Luz_Dormitorio_2\",\n   \"Luz_Dormitorio_3\",\n   \"Luz_Baño_Principal\",\n   \"Luz_Baño_Visitas\"\n  ],\n  \"ac\": [\n   \"AC_Sala_Principal\",\n   \"AC_Dormitorio_Principal\",\n   \"AC_Dormitorio_2\",\n   \"AC_Dormitorio_3\",\n   \"AC_Sala_Estudio\",\n   \"AC_Cocina\"\n  ],\n  \"plug\": [\n   \"Enchufe_TV_Sala\",\n   \"Enchufe_PC_Estudio\",\n   \"Enchufe_Cafetera\",\n   \"Enchufe_Lavadora\",\n   \"Enchufe_Ventilador_D2\",\n   \"Enchufe_Cargador_DP\"\n  ],\n  \"door\": [\n   \"Sensor_Puerta_Entrada\",\n   \"Sensor_Puerta_Garage\",\n   \"Puerta_Sala_Principal\",\n   \"Puerta_Cocina\",\n   \"Puerta_Lavanderia_2\",\n   \"Puerta_Lavanderia\",\n   \"Puerta_Dormitorio_Principal\",\n   \"Puerta_Dormitorio_Principal_Interior\",\n   \"Puerta_Dormitorio_3\",\n   \"Puerta_Sala_Estudio\",\n   \"Puerta_Bano_Visitas\",\n   \"Puerta_Pasillo\"\n  ],\n  \"doorExterior\": [\n   \"Sensor_Puerta_Entrada\",\n   \"Sensor_Puerta_Garage\"\n  ],\n  \"pir\": [\n   \"Sensor_PIR_Entrada_Sala_Principal\",\n   \"Sensor_PIR_Entrada_Cocina\",\n   \"Sensor_PIR_Entrada_Dormitorio_Principal\",\n   \"Sensor_PIR_Entrada_Lavaneria\",\n   \"Sensor_PIR_Entrada_Lavaneria_2\"\n  ],\n  \"scene\": [\n   \"llegue\",\n   \"cine\",\n   \"estudio\",\n   \"dormir\",\n   \"fuera\"\n  ],\n  \"sceneDisarms\": [\n   \"llegue\"\n  ]\n },\n \"ranges\": {\n  \"intensity\": [\n   0,\n   100\n  ],\n  \"setpoint\": [\n   16,\n   30\n  ],\n  \"hour\": [\n   0,\n   23.99\n  ]\n },\n \"limits\": {\n  \"maxMsgBytes\": 2048,\n  \"readBucket\": {\n   \"cap\": 10,\n   \"refillPerSec\": 2\n  },\n  \"controlBucket\": {\n   \"cap\": 120,\n   \"refillPerSec\": 60\n  },\n  \"helloFailMax\": 5,\n  \"helloLockMs\": 60000,\n  \"helloGlobalMax\": 30,\n  \"helloGlobalWindowMs\": 60000,\n  \"confirmTtlMs\": 15000,\n  \"maxPendingPerSession\": 8,\n  \"freezeMs\": 300000,\n  \"auditBucket\": {\n   \"cap\": 40,\n   \"refillPerSec\": 20\n  },\n  \"noticeEveryMs\": 10000,\n  \"ingestMaxMsgs\": 20,\n  \"ingestMaxBytes\": 8192\n },\n \"telemetry\": {\n  \"windowMs\": 30000,\n  \"blockMs\": 300000,\n  \"graceMs\": 60000,\n  \"maxJump\": {\n   \"temperature\": 12,\n   \"humidity\": 40,\n   \"ppm\": 1500\n  },\n  \"jumpMaxGapMs\": 15000,\n  \"devices\": [\n   {\n    \"dev\": \"light:Luz_Sala_Principal_1\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Sala_Principal_1\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Sala_Principal_2\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Sala_Principal_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Sala_Entrada_1\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Sala_Entrada_1\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Sala_Entrada_2\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Sala_Entrada_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Sala_Estudio_1\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Sala_Estudio_1\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Sala_Estudio_2\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Sala_Estudio_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Concina_1\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Concina_1\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Concina_2\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Concina_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Lavanderia_1\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Lavanderia_1\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Lavanderia_2\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Lavanderia_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Garage\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Garage\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Dormitorio_Principal\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Dormitorio_Principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Closet_Principal\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Closet_Principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Dormitorio_2\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Dormitorio_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Dormitorio_3\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Dormitorio_3\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Baño_Principal\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Baño_Principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"light:Luz_Baño_Visitas\",\n    \"m\": \"light\",\n    \"tags\": {\n     \"id\": \"Luz_Baño_Visitas\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Sensor_Puerta_Entrada\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Sensor_Puerta_Entrada\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Sensor_Puerta_Garage\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Sensor_Puerta_Garage\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Sala_Principal\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Sala_Principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Cocina\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Cocina\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Lavanderia_2\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Lavanderia_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Lavanderia\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Lavanderia\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Dormitorio_Principal\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Dormitorio_Principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Dormitorio_Principal_Interior\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Dormitorio_Principal_Interior\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Dormitorio_3\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Dormitorio_3\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Sala_Estudio\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Sala_Estudio\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Bano_Visitas\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Bano_Visitas\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"door:Puerta_Pasillo\",\n    \"m\": \"door\",\n    \"tags\": {\n     \"id\": \"Puerta_Pasillo\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"pir:Sensor_PIR_Entrada_Sala_Principal\",\n    \"m\": \"pir\",\n    \"tags\": {\n     \"id\": \"Sensor_PIR_Entrada_Sala_Principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"pir:Sensor_PIR_Entrada_Cocina\",\n    \"m\": \"pir\",\n    \"tags\": {\n     \"id\": \"Sensor_PIR_Entrada_Cocina\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"pir:Sensor_PIR_Entrada_Dormitorio_Principal\",\n    \"m\": \"pir\",\n    \"tags\": {\n     \"id\": \"Sensor_PIR_Entrada_Dormitorio_Principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"pir:Sensor_PIR_Entrada_Lavaneria\",\n    \"m\": \"pir\",\n    \"tags\": {\n     \"id\": \"Sensor_PIR_Entrada_Lavaneria\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"pir:Sensor_PIR_Entrada_Lavaneria_2\",\n    \"m\": \"pir\",\n    \"tags\": {\n     \"id\": \"Sensor_PIR_Entrada_Lavaneria_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"ac:AC_Sala_Principal\",\n    \"m\": \"ac\",\n    \"tags\": {\n     \"id\": \"AC_Sala_Principal\",\n     \"room\": \"sala_principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"ac:AC_Dormitorio_Principal\",\n    \"m\": \"ac\",\n    \"tags\": {\n     \"id\": \"AC_Dormitorio_Principal\",\n     \"room\": \"dormitorio_principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"ac:AC_Dormitorio_2\",\n    \"m\": \"ac\",\n    \"tags\": {\n     \"id\": \"AC_Dormitorio_2\",\n     \"room\": \"dormitorio_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"ac:AC_Dormitorio_3\",\n    \"m\": \"ac\",\n    \"tags\": {\n     \"id\": \"AC_Dormitorio_3\",\n     \"room\": \"dormitorio_3\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"ac:AC_Sala_Estudio\",\n    \"m\": \"ac\",\n    \"tags\": {\n     \"id\": \"AC_Sala_Estudio\",\n     \"room\": \"sala_estudio\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"ac:AC_Cocina\",\n    \"m\": \"ac\",\n    \"tags\": {\n     \"id\": \"AC_Cocina\",\n     \"room\": \"cocina\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"plug:Enchufe_TV_Sala\",\n    \"m\": \"plug\",\n    \"tags\": {\n     \"id\": \"Enchufe_TV_Sala\",\n     \"room\": \"sala_principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"plug:Enchufe_PC_Estudio\",\n    \"m\": \"plug\",\n    \"tags\": {\n     \"id\": \"Enchufe_PC_Estudio\",\n     \"room\": \"sala_estudio\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"plug:Enchufe_Cafetera\",\n    \"m\": \"plug\",\n    \"tags\": {\n     \"id\": \"Enchufe_Cafetera\",\n     \"room\": \"cocina\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"plug:Enchufe_Lavadora\",\n    \"m\": \"plug\",\n    \"tags\": {\n     \"id\": \"Enchufe_Lavadora\",\n     \"room\": \"lavanderia\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"plug:Enchufe_Ventilador_D2\",\n    \"m\": \"plug\",\n    \"tags\": {\n     \"id\": \"Enchufe_Ventilador_D2\",\n     \"room\": \"dormitorio_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"plug:Enchufe_Cargador_DP\",\n    \"m\": \"plug\",\n    \"tags\": {\n     \"id\": \"Enchufe_Cargador_DP\",\n     \"room\": \"dormitorio_principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-sala_principal\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"sala_principal\",\n     \"sensor\": \"DHT22-sala_principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-sala_entrada\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"sala_entrada\",\n     \"sensor\": \"DHT22-sala_entrada\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-sala_estudio\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"sala_estudio\",\n     \"sensor\": \"DHT22-sala_estudio\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-cocina\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"cocina\",\n     \"sensor\": \"DHT22-cocina\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-lavanderia\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"lavanderia\",\n     \"sensor\": \"DHT22-lavanderia\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-garaje\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"garaje\",\n     \"sensor\": \"DHT22-garaje\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-dormitorio_principal\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"dormitorio_principal\",\n     \"sensor\": \"DHT22-dormitorio_principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-dormitorio_2\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"dormitorio_2\",\n     \"sensor\": \"DHT22-dormitorio_2\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-dormitorio_3\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"dormitorio_3\",\n     \"sensor\": \"DHT22-dormitorio_3\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-bano_principal\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"bano_principal\",\n     \"sensor\": \"DHT22-bano_principal\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:DHT22-bano_visitas\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"bano_visitas\",\n     \"sensor\": \"DHT22-bano_visitas\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:exterior\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"exterior\",\n     \"sensor\": \"exterior\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:Sensor_Humo_Cocina\",\n    \"m\": \"smoke\",\n    \"tags\": {\n     \"sensor\": \"Sensor_Humo_Cocina\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"meter:Medidor_General\",\n    \"m\": \"power\",\n    \"tags\": {\n     \"meter\": \"Medidor_General\"\n    },\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"core:security\",\n    \"m\": \"security\",\n    \"tags\": {},\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"core:alerts\",\n    \"m\": \"alerts\",\n    \"tags\": null,\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"core:events\",\n    \"m\": \"events\",\n    \"tags\": null,\n    \"ingest\": false\n   },\n   {\n    \"dev\": \"sensor:PRUEBA-ingesta\",\n    \"m\": \"env\",\n    \"tags\": {\n     \"room\": \"prueba\",\n     \"sensor\": \"PRUEBA-ingesta\"\n    },\n    \"ingest\": true\n   }\n  ],\n  \"schema\": {\n   \"power\": {\n    \"tags\": [\n     \"meter\"\n    ],\n    \"fields\": {\n     \"watts\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 50000\n     },\n     \"kwh\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 1000000000\n     },\n     \"base\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 50000\n     },\n     \"lights\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 50000\n     },\n     \"ac\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 50000\n     },\n     \"plugs\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 50000\n     }\n    }\n   },\n   \"smoke\": {\n    \"tags\": [\n     \"sensor\"\n    ],\n    \"fields\": {\n     \"ppm\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 10000\n     },\n     \"alarm\": {\n      \"t\": \"bool\"\n     },\n     \"simulating\": {\n      \"t\": \"bool\"\n     }\n    }\n   },\n   \"env\": {\n    \"tags\": [\n     \"room\",\n     \"sensor\"\n    ],\n    \"fields\": {\n     \"temperature\": {\n      \"t\": \"num\",\n      \"min\": -30,\n      \"max\": 70\n     },\n     \"humidity\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 100\n     },\n     \"lux\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 200000\n     }\n    }\n   },\n   \"ac\": {\n    \"tags\": [\n     \"id\",\n     \"room\"\n    ],\n    \"fields\": {\n     \"on\": {\n      \"t\": \"bool\"\n     },\n     \"mode\": {\n      \"t\": \"enum\",\n      \"v\": [\n       \"cool\",\n       \"fan\"\n      ]\n     },\n     \"setpoint\": {\n      \"t\": \"num\",\n      \"min\": 16,\n      \"max\": 30\n     },\n     \"running\": {\n      \"t\": \"bool\"\n     },\n     \"watts\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 10000\n     }\n    }\n   },\n   \"plug\": {\n    \"tags\": [\n     \"id\",\n     \"room\"\n    ],\n    \"fields\": {\n     \"on\": {\n      \"t\": \"bool\"\n     },\n     \"watts\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 10000\n     },\n     \"kwh\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 1000000000\n     }\n    }\n   },\n   \"light\": {\n    \"tags\": [\n     \"id\"\n    ],\n    \"fields\": {\n     \"on\": {\n      \"t\": \"bool\"\n     },\n     \"intensity\": {\n      \"t\": \"num\",\n      \"min\": 0,\n      \"max\": 100\n     },\n     \"color\": {\n      \"t\": \"hex\"\n     }\n    }\n   },\n   \"door\": {\n    \"tags\": [\n     \"id\"\n    ],\n    \"fields\": {\n     \"open\": {\n      \"t\": \"bool\"\n     }\n    }\n   },\n   \"pir\": {\n    \"tags\": [\n     \"id\"\n    ],\n    \"fields\": {\n     \"motion\": {\n      \"t\": \"bool\"\n     }\n    }\n   },\n   \"security\": {\n    \"tags\": [],\n    \"fields\": {\n     \"mode\": {\n      \"t\": \"enum\",\n      \"v\": [\n       \"disarmed\",\n       \"home\",\n       \"away\"\n      ]\n     },\n     \"alarm\": {\n      \"t\": \"bool\"\n     },\n     \"cause\": {\n      \"t\": \"str\",\n      \"max\": 120\n     }\n    }\n   },\n   \"alerts\": {\n    \"tags\": [\n     \"id\",\n     \"level\"\n    ],\n    \"fields\": {\n     \"active\": {\n      \"t\": \"bool\"\n     },\n     \"message\": {\n      \"t\": \"str\",\n      \"max\": 240\n     }\n    }\n   },\n   \"events\": {\n    \"tags\": [\n     \"level\",\n     \"source\"\n    ],\n    \"fields\": {\n     \"message\": {\n      \"t\": \"str\",\n      \"max\": 400\n     },\n     \"id\": {\n      \"t\": \"str\",\n      \"max\": 80\n     }\n    }\n   }\n  }\n }\n};\nglobal.set('sec', sec);\nif (!global.get('secRt')) {\n  const sha = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');\n  const MIN = 12;\n  const temporales = [];\n  const leer = (name, label) => {\n    const v = String(env.get(name) || '').trim();\n    if (v.length >= MIN) return { value: v, temporal: false };\n    if (v) node.warn('[Seguridad IoT] ' + name + ' es demasiado corta (mínimo ' + MIN + ' caracteres): se ignora.');\n    const t = crypto.randomBytes(18).toString('base64url');\n    temporales.push(label + ': ' + t);\n    return { value: t, temporal: true };\n  };\n  const previa = (name) => { const v = String(env.get(name) || '').trim(); return v.length >= MIN ? [sha(v)] : []; };\n  const op = leer('CASA_PAIRING_KEY', 'clave de OPERADOR (emparejamiento)');\n  const ad = leer('CASA_ADMIN_KEY', 'clave de ADMINISTRADOR');\n  const dk = leer('CASA_DEVICE_KEY', 'clave de dispositivos');\n  const rt = {\n    startedAt: Date.now(),\n    deviceKeyPersistent: !dk.temporal,\n    ingestEnabled: String(env.get('CASA_INGEST') || '').toLowerCase() === 'on' && !dk.temporal,\n    sessions: {}, frozenUntil: 0, helloFails: [], lastPrune: Date.now(),\n    seqOut: {}, lastSeq: {}, lastVal: {}, blocks: {}, prevHash: 'GENESIS', genesis: true,\n    audit: { tokens: 40, ts: Date.now(), dropped: 0, lastDropAt: 0 }, notice: {},\n    stats: { accepted: 0, rejected: 0, telemetryAccepted: 0, telemetryRejected: 0 },\n  };\n  // Los SECRETOS van como propiedades NO enumerables: no salen en JSON.stringify ni en la API de contexto del editor\n  // de Node-RED (GET /context/global/secRt), que de otro modo devolvería la clave maestra a quien llegue al editor.\n  // (El editor debe estar protegido con adminAuth igualmente: ver settings.js.)\n  const oculto = (k, v) => Object.defineProperty(rt, k, { value: v, enumerable: false, writable: true, configurable: true });\n  // Solo se guardan resúmenes SHA-256 de las claves de emparejamiento: la clave en texto no queda en memoria.\n  oculto('keys', { operador: [sha(op.value)].concat(previa('CASA_PAIRING_KEY_PREVIOUS')), administrador: [sha(ad.value)].concat(previa('CASA_ADMIN_KEY_PREVIOUS')) });\n  oculto('master', Buffer.from(dk.value, 'utf8'));\n  oculto('devKeys', {});\n  oculto('intKey', null);\n  oculto('pending', {}); // códigos de confirmación vigentes\n  global.set('secRt', rt);\n  if (temporales.length) {\n    node.warn('[Seguridad IoT] MODO DESARROLLO: faltan variables de entorno, se crearon claves temporales (valen solo hasta que reinicies Node-RED):\\n  ' + temporales.join('\\n  ') + '\\n  Para que sean fijas: define CASA_PAIRING_KEY, CASA_ADMIN_KEY y CASA_DEVICE_KEY (ver .env.example).');\n  }\n  if (String(env.get('CASA_INGEST') || '').toLowerCase() === 'on' && dk.temporal) {\n    node.warn('[Seguridad IoT] CASA_INGEST=on se ignora: la ingesta externa necesita una CASA_DEVICE_KEY fija.');\n  }\n} else {\n  // Reinicio de la simulación: los valores nuevos pueden saltar (p. ej. kWh vuelve a 0); se olvida la línea base de anomalías.\n  global.get('secRt').lastVal = {};\n}\n\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst d = new Date();\nconst hour = d.getHours() + d.getMinutes() / 60;\nconst o = cfg.CLIMATE.outdoor;\nconst outdoor = o.mean + o.amp * Math.cos(((hour - o.peakHour) / 24) * 2 * Math.PI);\n\nconst S = {\n  lights: {}, pirMotion: {}, pirUntil: {}, pirAuto: {}, doors: {},\n  smoke: { ppm: cfg.SMOKE.normalPpm, leak: false, alarm: false },\n  kwh: 0, rooms: {}, acs: {}, acReached: {}, plugs: {},\n  security: { mode: 'disarmed', alarm: false, cause: null },\n  hourOverride: null, last: { ac: {}, plug: {} }, lastPower: null, events: [],\n  ev: { heat: 0, hum: 0 },            // hasta cuándo dura cada evento doméstico (ms): cocinar, ducha\n  lvl: { heat: 0, hum: 0 },           // nivel suave 0..1 de cada evento\n  alerts: {},                         // alertas activas: id → { level, message, since }\n  // Transparencia del pipeline: lo que Node-RED ha guardado, verificado y servido de verdad\n  pipe: { batches: 0, points: 0, lastBatchAt: null, errors: 0, lastError: null, lastErrorAt: null, store: null,\n          api: { requests: 0, errors: 0, lastRoute: null, lastMs: null, lastAt: null, lastPoints: null } },\n};\n\nfor (const l of cfg.LIGHTS) {\n  const pct = cfg.INITIAL_LIGHTS_ON[l.id];\n  S.lights[l.id] = { id: l.id, on: pct !== undefined, intensity: pct !== undefined ? pct : 100, color: cfg.DEFAULT_LIGHT_COLOR };\n}\nfor (const p of cfg.PIRS) { S.pirMotion[p.id] = false; S.pirUntil[p.id] = null; S.pirAuto[p.id] = []; }\nfor (const dr of cfg.DOORS) S.doors[dr.id] = false;\nfor (const r of cfg.ROOMS) S.rooms[r.id] = { t: outdoor - cfg.CLIMATE.insulation, h: 60, lux: 0 };\nfor (const a of cfg.AIR_CONDITIONERS) S.acs[a.id] = { id: a.id, on: false, mode: 'cool', setpoint: 24, fan: 'mid', running: false, watts: 0 };\nfor (const p of cfg.PLUGS) {\n  const on = !!p.initialOn;\n  S.plugs[p.id] = { id: p.id, on, watts: on ? p.watts : 0, kwh: 0, offAt: on && p.autoOffSec ? Date.now() + p.autoOffSec * 1000 : null };\n}\n\nflow.set('state', S);\nflow.set('seq', 1);\nnode.status({ fill: 'green', shape: 'dot', text: 'simulación lista · ' + d.toLocaleTimeString('es-CO') });\n\nconst evt = { id: 'nr-init-' + Date.now(), ts: Date.now(), level: 'info', source: 'Sistema', message: 'Simulación iniciada en Node-RED' };\nS.events.push(evt);\nconst ev = { type: 'event', event: evt };\n// salida 1 → telemetría · salida 2 → comando para que TODOS los clientes reciban un snapshot nuevo\nreturn [[{ payload: ev }], [{ payload: { kind: 'snapshot.request' } }]];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "x": 480,
+    "y": 70,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_c_BComandos",
+    "type": "comment",
+    "name": "B · Comandos — WebSocket y enrutador por tipo (kind)",
+    "info": "El frontend envía {\"kind\":\"light.set\",…}. Las escenas y automatizaciones reutilizan el mismo enrutador (link «comandos»).",
+    "x": 340,
+    "y": 130,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_ws_in",
+    "type": "websocket in",
+    "name": "Frontend → Node-RED",
+    "server": "cfg_ws",
+    "client": "",
+    "x": 160,
+    "y": 175,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_parsear-comando"
+      ]
+    ]
+  },
+  {
+    "id": "casa_parsear-comando",
+    "type": "function",
+    "name": "Parsear comando del WebSocket",
+    "func": "// El frontend envía JSON como texto. Aquí solo se comprueba TAMAÑO y FORMA; el permiso y los valores\n// los decide el nodo siguiente («Autorizar sesión y validar comando»). Todo mensaje que llega por\n// el WebSocket es NO CONFIABLE hasta pasar por ese nodo.\n//   - más de maxMsgBytes  → msg.parseError = 'too_large'\n//   - no es JSON          → msg.parseError = 'no_json'\n//   - no es objeto con kind → msg.parseError = 'schema'\n// Límite honesto: el nodo «websocket» de Node-RED ya leyó el mensaje entero antes de llegar aquí; esta\n// comprobación no evita que un cliente envíe un mensaje enorme (eso se limita en el proxy y con memoria del contenedor).\nconst sec = global.get('sec');\nconst MAX = (sec && sec.limits.maxMsgBytes) || 2048;\nlet p = msg.payload;\nconst bytes = Buffer.isBuffer(p) ? p.length : typeof p === 'string' ? Buffer.byteLength(p, 'utf8') : 0;\nif (bytes > MAX) { msg.parseError = 'too_large'; msg.payload = {}; return msg; }\nif (Buffer.isBuffer(p)) p = p.toString('utf8');\nif (typeof p === 'string') {\n  try { p = JSON.parse(p); } catch (e) { msg.parseError = 'no_json'; msg.payload = {}; return msg; }\n}\nif (!p || typeof p !== 'object' || Array.isArray(p) || typeof p.kind !== 'string') { msg.parseError = 'schema'; msg.payload = {}; return msg; }\nmsg.payload = p;           // msg._session se conserva: sirve para responder solo a ese cliente\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 175,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_sesion-autorizar"
+      ]
+    ]
+  },
+  {
+    "id": "casa_sesion-autorizar",
+    "type": "function",
+    "name": "Autorizar sesión y validar comando",
+    "func": "// ── Criptografía y seguridad del canal (generado) ───────────────────\nconst SEC = global.get('sec');\nconst RT = global.get('secRt');\nconst hmacHex = (key, data) => crypto.createHmac('sha256', key).update(data).digest('hex');\nconst sha256Hex = (data) => crypto.createHash('sha256').update(data).digest('hex');\nconst ctEq = (aHex, bHex) => { try { const a = Buffer.from(String(aHex), 'hex'), b = Buffer.from(String(bHex), 'hex'); return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b); } catch (e) { return false; } };\nconst deviceKey = (dev) => RT.devKeys[dev] || (RT.devKeys[dev] = crypto.createHmac('sha256', RT.master).update('casa-iot/device/v1/' + dev).digest());\nconst sortedPairs = (o) => Object.keys(o || {}).sort().map((k) => [k, o[k]]);\nconst canon = (m, tags, f, ts) => JSON.stringify([m, sortedPairs(tags), sortedPairs(f), ts]);\n// ─────────────────────────────────────────────────────────────────────\n\n// PUERTA ÚNICA de las órdenes que llegan por el WebSocket. Todo lo que no pase por aquí no llega al enrutador.\n//   Salida 1 → enrutador (orden ya autorizada y saneada: solo las claves esperadas, con valores en rango)\n//   Salida 2 → respuesta SOLO a ese cliente (msg._session): sesión, confirmación pedida o rechazo\n//   Salida 3 → registros de auditoría (medición «audit» de InfluxDB)\n//\n// IDENTIDAD DE SESIÓN, NO DE PERSONA (no hay cuentas ni contraseñas de usuario):\n//   lector         → cualquier conexión nueva. Solo ve datos. Es lo que ve el público de Vercel.\n//   operador       → sesión emparejada con CASA_PAIRING_KEY: luces, aires, enchufes, puertas, escenas, armar la alarma.\n//   administrador  → sesión emparejada con CASA_ADMIN_KEY: además, simulaciones, hora simulada y revocar sesiones.\n// Acciones sensibles (desarmar la alarma, abrir una puerta del perímetro, escenas que desarman) piden CONFIRMACIÓN en\n// dos pasos: el servidor responde con un código de un solo uso (15 s, ligado a esta sesión) y solo ejecuta cuando\n// vuelve ese código en un mensaje «confirm».\n//\n// La validación ocurre AQUÍ, en el servidor. Ocultar botones en la interfaz es solo comodidad, no un control.\n// Límites honestos: la IP del cliente no llega a Node-RED, por eso los límites son por sesión y globales (el límite\n// por IP lo da el proxy y settings.js → webSocketNodeVerifyClient); una sesión nueva se obtiene reconectando.\nif (!SEC || !RT) return [null, [{ payload: { type: 'reject', kind: '?', reason: 'not_ready' }, _session: msg._session }], null];\n\nconst now = Date.now();\nconst L = SEC.limits;\nconst NAME = SEC.roles;\nconst key = (msg._session && msg._session.id) || 'sin-sesion';\nconst short = (v) => sha256Hex(String(v)).slice(0, 8);   // nunca se guarda el id de sesión completo\nconst toOut = [], replies = [], audits = [];\nconst reply = (payload) => { if (msg._session) replies.push({ payload, _session: msg._session }); };\nconst fin = () => [toOut.length ? toOut : null, replies.length ? replies : null, audits.length ? audits : null];\n\n// ── mantenimiento barato (cada minuto) ──\nif (now - RT.lastPrune > 60000) {\n  RT.lastPrune = now;\n  for (const k of Object.keys(RT.sessions)) if (now - RT.sessions[k].last > 3600000) delete RT.sessions[k];\n  for (const c of Object.keys(RT.pending)) if (RT.pending[c].exp < now) delete RT.pending[c];\n  RT.helloFails = RT.helloFails.filter((t) => now - t < L.helloGlobalWindowMs);\n}\n\nlet S = RT.sessions[key];\nif (!S) S = RT.sessions[key] = { rank: 0, since: now, last: now, fails: 0, lockedUntil: 0, tokens: L.readBucket.cap, ts: now };\nS.last = now;\n\nconst rec = (result, reason, kind, id, extra) =>\n  audits.push({ payload: Object.assign({ result, reason, kind: String(kind || '?').slice(0, 40), id: id ? String(id).slice(0, 60) : '', role: NAME[S.rank], sid: short(key) }, extra || {}) });\nconst reject = (reason, kind, id, extra) => {\n  RT.stats.rejected++;\n  rec('rejected', reason, kind, id, extra);\n  if (reason !== 'rate_limit') reply({ type: 'reject', kind: String(kind || '?').slice(0, 40), reason, need: extra && extra.need });   // a quien inunda no se le contesta cada mensaje\n  return fin();\n};\n\n// ── 1. frecuencia por sesión (cubeta de fichas) ──\nconst B = S.rank > 0 ? L.controlBucket : L.readBucket;\nS.tokens = Math.min(B.cap, S.tokens + ((now - S.ts) / 1000) * B.refillPerSec);\nS.ts = now;\nif (S.tokens < 1) return reject('rate_limit', msg.payload && msg.payload.kind);\nS.tokens -= 1;\n\n// ── 2. forma del mensaje (ya revisada en «Parsear comando») ──\nif (msg.parseError) return reject(msg.parseError, '?');\nconst cmd = msg.payload || {};\nconst kind = cmd.kind;\nconst spec = Object.prototype.hasOwnProperty.call(SEC.kinds, kind) ? SEC.kinds[kind] : null;\nif (!spec) return reject('unknown_kind', kind);\n// solo las claves esperadas: así nadie puede colar campos internos (auto, quiet, reason…) ni __proto__\nfor (const k of Object.keys(cmd)) if (!spec.keys.includes(k)) return reject('schema', kind, cmd.id);\n\n// ── 3. capacidades por rol ──\nif (spec.role > S.rank) return reject('forbidden', kind, cmd.id, { need: NAME[spec.role] });\n\n// ── 4. mensajes de sesión ──\nif (kind === 'session.hello') {\n  if (RT.frozenUntil > now) return reject('frozen', kind);\n  RT.helloFails = RT.helloFails.filter((t) => now - t < L.helloGlobalWindowMs);\n  if (S.lockedUntil > now || RT.helloFails.length >= L.helloGlobalMax) return reject('locked', kind);\n  const k = cmd.key;\n  const h = typeof k === 'string' && k.length >= 8 && k.length <= 128 ? sha256Hex(k) : null;\n  const matches = (list) => list.map((x) => (h ? ctEq(x, h) : false)).includes(true);   // sin cortocircuito: no filtra por tiempo\n  const rank = matches(RT.keys.administrador) ? 2 : matches(RT.keys.operador) ? 1 : 0;\n  if (!rank) {\n    S.fails++; RT.helloFails.push(now);\n    if (S.fails >= L.helloFailMax) { S.lockedUntil = now + L.helloLockMs; S.fails = 0; }\n    return reject('bad_key', kind);\n  }\n  S.rank = rank; S.fails = 0; S.since = now;\n  RT.stats.accepted++;\n  rec('accepted', 'paired', kind);\n  reply({ type: 'session', role: NAME[rank] });\n  return fin();\n}\nif (kind === 'session.logout') {\n  S.rank = 0;\n  for (const c of Object.keys(RT.pending)) if (RT.pending[c].sid === key) delete RT.pending[c];\n  RT.stats.accepted++;\n  rec('accepted', 'logout', kind);\n  reply({ type: 'session', role: NAME[0] });\n  return fin();\n}\nif (kind === 'admin.revoke') {\n  let n = 0;\n  for (const k of Object.keys(RT.sessions)) {\n    if (k !== key && RT.sessions[k].rank > 0) {\n      RT.sessions[k].rank = 0; n++;\n      replies.push({ payload: { type: 'session', role: NAME[0], revoked: true }, _session: { type: 'websocket', id: k } });\n    }\n  }\n  for (const c of Object.keys(RT.pending)) if (RT.pending[c].sid !== key) delete RT.pending[c];\n  RT.frozenUntil = now + L.freezeMs;\n  RT.stats.accepted++;\n  rec('accepted', 'revoked', kind, '', { count: n });\n  reply({ type: 'session', role: NAME[S.rank], note: 'revocadas ' + n });\n  toOut.push({ payload: { kind: 'security.notice', level: 'warning', message: 'Sesiones de control revocadas (' + n + ') · emparejamiento congelado ' + Math.round(L.freezeMs / 60000) + ' min' } });\n  return fin();\n}\nif (kind === 'confirm') {\n  const code = typeof cmd.code === 'string' && /^[0-9a-f]{8}$/.test(cmd.code) ? cmd.code : null;\n  const p = code ? RT.pending[code] : null;\n  if (!p) return reject('bad_confirm', kind);                       // inexistente, ya usado (repetición) o mal escrito\n  if (p.sid !== key) return reject('bad_confirm', kind, p.cmd.id);  // el código es de otra sesión\n  delete RT.pending[code];                                          // un solo uso, también si caducó\n  if (p.exp < now) return reject('expired', kind, p.cmd.id);\n  if (S.rank < p.need) return reject('forbidden', kind, p.cmd.id, { need: NAME[p.need] });\n  RT.stats.accepted++;\n  rec('accepted', 'confirmed', p.cmd.kind, p.cmd.id, { confirmed: true });\n  toOut.push({ payload: p.cmd, _session: msg._session });\n  return fin();\n}\n\n// ── 5. órdenes de dispositivos: esquema estricto y rangos ──\nconst isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);\nconst isNum = (v, a, b) => typeof v === 'number' && Number.isFinite(v) && v >= a && v <= b;\nconst has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);\nconst known = (list, v) => typeof v === 'string' && list.includes(v);\nconst cfg = global.get('cfg') || {};   // nombres legibles de puertas y escenas para el texto del cuadro de confirmación\nconst label = (list, id) => { const x = (list || []).find((i) => i.id === id); return x ? x.label : id; };\nlet clean = null, sensitive = null;\n\nswitch (kind) {\n  case 'snapshot.request':\n    clean = { kind };\n    break;\n  case 'light.set': {\n    if (!known(SEC.ids.light, cmd.id)) return reject('unknown_id', kind, cmd.id);\n    if (!isObj(cmd.patch)) return reject('schema', kind, cmd.id);\n    const ks = Object.keys(cmd.patch);\n    if (!ks.length || ks.some((k) => !['on', 'intensity', 'color'].includes(k))) return reject('schema', kind, cmd.id);\n    const patch = {};\n    if (has(cmd.patch, 'on')) { if (typeof cmd.patch.on !== 'boolean') return reject('schema', kind, cmd.id); patch.on = cmd.patch.on; }\n    if (has(cmd.patch, 'intensity')) { if (!isNum(cmd.patch.intensity, SEC.ranges.intensity[0], SEC.ranges.intensity[1])) return reject('range', kind, cmd.id); patch.intensity = cmd.patch.intensity; }\n    if (has(cmd.patch, 'color')) { if (typeof cmd.patch.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(cmd.patch.color)) return reject('range', kind, cmd.id); patch.color = cmd.patch.color; }\n    clean = { kind, id: cmd.id, patch };\n    break;\n  }\n  case 'ac.set': {\n    if (!known(SEC.ids.ac, cmd.id)) return reject('unknown_id', kind, cmd.id);\n    if (!isObj(cmd.patch)) return reject('schema', kind, cmd.id);\n    const ks = Object.keys(cmd.patch);\n    if (!ks.length || ks.some((k) => !['on', 'mode', 'setpoint', 'fan'].includes(k))) return reject('schema', kind, cmd.id);\n    const patch = {};\n    if (has(cmd.patch, 'on')) { if (typeof cmd.patch.on !== 'boolean') return reject('schema', kind, cmd.id); patch.on = cmd.patch.on; }\n    if (has(cmd.patch, 'mode')) { if (cmd.patch.mode !== 'cool' && cmd.patch.mode !== 'fan') return reject('range', kind, cmd.id); patch.mode = cmd.patch.mode; }\n    if (has(cmd.patch, 'fan')) { if (!['low', 'mid', 'high'].includes(cmd.patch.fan)) return reject('range', kind, cmd.id); patch.fan = cmd.patch.fan; }\n    if (has(cmd.patch, 'setpoint')) { if (!isNum(cmd.patch.setpoint, SEC.ranges.setpoint[0], SEC.ranges.setpoint[1])) return reject('range', kind, cmd.id); patch.setpoint = cmd.patch.setpoint; }\n    clean = { kind, id: cmd.id, patch };\n    break;\n  }\n  case 'plug.set':\n    if (!known(SEC.ids.plug, cmd.id)) return reject('unknown_id', kind, cmd.id);\n    if (typeof cmd.on !== 'boolean') return reject('schema', kind, cmd.id);\n    clean = { kind, id: cmd.id, on: cmd.on };\n    break;\n  case 'door.set':\n    if (!known(SEC.ids.door, cmd.id)) return reject('unknown_id', kind, cmd.id);\n    if (typeof cmd.open !== 'boolean') return reject('schema', kind, cmd.id);\n    clean = { kind, id: cmd.id, open: cmd.open };\n    if (cmd.open && SEC.ids.doorExterior.includes(cmd.id)) sensitive = 'Abrir «' + label(cfg.DOORS, cmd.id) + '» (puerta del perímetro)';\n    break;\n  case 'scene.apply':\n    if (!known(SEC.ids.scene, cmd.id)) return reject('unknown_id', kind, cmd.id);\n    clean = { kind, id: cmd.id };\n    if (SEC.ids.sceneDisarms.includes(cmd.id)) sensitive = 'Aplicar la escena «' + label(cfg.SCENES, cmd.id) + '» (desarma la alarma)';\n    break;\n  case 'security.set':\n    if (!['disarmed', 'home', 'away'].includes(cmd.mode)) return reject('range', kind);\n    clean = { kind, mode: cmd.mode };\n    if (cmd.mode === 'disarmed') sensitive = 'Desarmar la alarma';\n    break;\n  case 'security.simulateIntrusion':\n    clean = { kind };\n    break;\n  case 'smoke.simulate':\n  case 'heat.simulate':\n  case 'humidity.simulate':\n    if (typeof cmd.active !== 'boolean') return reject('schema', kind);\n    clean = { kind, active: cmd.active };\n    break;\n  case 'pir.simulate':\n    if (!known(SEC.ids.pir, cmd.id)) return reject('unknown_id', kind, cmd.id);\n    clean = { kind, id: cmd.id };\n    break;\n  case 'world.setHour':\n    if (cmd.hour !== null && !isNum(cmd.hour, SEC.ranges.hour[0], SEC.ranges.hour[1])) return reject('range', kind);\n    clean = { kind, hour: cmd.hour };\n    break;\n  default:\n    return reject('unknown_kind', kind);\n}\n\n// ── 6. acciones sensibles: confirmación en dos pasos ──\nif (sensitive) {\n  const mine = Object.keys(RT.pending).filter((c) => RT.pending[c].sid === key);\n  while (mine.length >= L.maxPendingPerSession) delete RT.pending[mine.shift()];\n  const code = crypto.randomBytes(4).toString('hex');\n  RT.pending[code] = { sid: key, cmd: clean, need: spec.role, exp: now + L.confirmTtlMs, summary: sensitive };\n  rec('pending', 'confirm_required', kind, clean.id);\n  reply({ type: 'confirm', code, kind, summary: sensitive, ttlMs: L.confirmTtlMs });\n  return fin();\n}\n\nRT.stats.accepted++;\nrec('accepted', 'ok', kind, clean.id);\ntoOut.push({ payload: clean, _session: msg._session });\nreturn fin();\n",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "x": 610,
+    "y": 175,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_router"
+      ],
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_auditar"
+      ]
+    ]
+  },
+  {
+    "id": "casa_auditar",
+    "type": "function",
+    "name": "Auditoría (InfluxDB + registro de eventos)",
+    "func": "// ── Criptografía y seguridad del canal (generado) ───────────────────\nconst SEC = global.get('sec');\nconst RT = global.get('secRt');\nconst hmacHex = (key, data) => crypto.createHmac('sha256', key).update(data).digest('hex');\nconst sha256Hex = (data) => crypto.createHash('sha256').update(data).digest('hex');\nconst ctEq = (aHex, bHex) => { try { const a = Buffer.from(String(aHex), 'hex'), b = Buffer.from(String(bHex), 'hex'); return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b); } catch (e) { return false; } };\nconst deviceKey = (dev) => RT.devKeys[dev] || (RT.devKeys[dev] = crypto.createHmac('sha256', RT.master).update('casa-iot/device/v1/' + dev).digest());\nconst sortedPairs = (o) => Object.keys(o || {}).sort().map((k) => [k, o[k]]);\nconst canon = (m, tags, f, ts) => JSON.stringify([m, sortedPairs(tags), sortedPairs(f), ts]);\n// ─────────────────────────────────────────────────────────────────────\n\n// Recibe registros {result, reason, kind, id, role, sid, …} de «Autorizar sesión» y de «Validar telemetría».\n//   Salida 1 → puntos de InfluxDB:  audit (tags result, reason, kind, role → id, session, confirmed, count)\n//                                  quarantine (tags dev, measurement, reason → summary): lecturas descartadas por anomalía\n//   Salida 2 → órdenes internas «security.notice»: un aviso en el registro de eventos por motivo, como máximo cada noticeEveryMs\n// Sin secretos: la sesión se guarda como un resumen de 8 caracteres y nunca se guardan claves, firmas ni mensajes completos.\n// Una inundación no puede llenar InfluxDB: hay un tope de puntos por segundo; lo que sobra se cuenta y se resume en un solo punto.\nconst r = msg.payload || {};\nconst now = Date.now();\nconst L = SEC.limits;\nconst A = RT.audit;\n\n// cubeta de fichas para InfluxDB\nA.tokens = Math.min(L.auditBucket.cap, A.tokens + ((now - A.ts) / 1000) * L.auditBucket.refillPerSec);\nA.ts = now;\nconst points = [];\nif (A.tokens >= 1) {\n  A.tokens -= 1;\n  const tags = { result: String(r.result || '?'), reason: String(r.reason || '?'), kind: String(r.kind || '?'), role: String(r.role || '?') };\n  const fields = { id: String(r.id || ''), session: String(r.sid || ''), count: typeof r.count === 'number' ? r.count : 1 };\n  if (r.confirmed) fields.confirmed = true;\n  points.push({ measurement: 'audit', tags, fields, timestamp: new Date(now) });\n  if (r.quarantine) {\n    const q = r.quarantine;\n    points.push({ measurement: 'quarantine', tags: { dev: String(q.dev || '?').slice(0, 60), measurement: String(q.m || '?').slice(0, 30), reason: tags.reason }, fields: { summary: String(q.summary || '').slice(0, 300) }, timestamp: new Date(now) });\n  }\n} else {\n  A.dropped++;\n}\nif (A.dropped > 0 && now - A.lastDropAt > 1000 && A.tokens >= 1) {\n  A.tokens -= 1;\n  points.push({ measurement: 'audit', tags: { result: 'rejected', reason: 'flood', kind: 'audit.drop', role: '-' }, fields: { id: '', session: '', count: A.dropped }, timestamp: new Date(now) });\n  A.dropped = 0; A.lastDropAt = now;\n}\n\n// aviso legible en el registro de eventos (solo rechazos; uno por motivo cada noticeEveryMs)\nconst WHY = {\n  bad_key: 'clave de emparejamiento incorrecta', locked: 'emparejamiento bloqueado por intentos fallidos', frozen: 'emparejamiento congelado por un administrador',\n  forbidden: 'orden sin permiso para el rol de la sesión', unknown_kind: 'tipo de orden desconocido', unknown_id: 'dispositivo inexistente', schema: 'mensaje con forma inválida',\n  range: 'valor fuera de rango', too_large: 'mensaje demasiado grande', no_json: 'mensaje que no es JSON', rate_limit: 'demasiados mensajes por segundo',\n  bad_confirm: 'código de confirmación inválido o repetido', expired: 'código de confirmación caducado',\n  bad_signature: 'firma HMAC inválida', replay: 'mensaje repetido (número de secuencia ya usado)', stale: 'mensaje fuera de la ventana de tiempo', unknown_device: 'dispositivo no registrado',\n  anomaly: 'lectura físicamente imposible (en cuarentena)', envelope: 'sobre de telemetría mal formado', disabled: 'ingesta deshabilitada',\n};\nconst cmds = [];\nif (r.result === 'rejected' && r.reason !== 'flood') {\n  const a = RT.notice[r.reason] || (RT.notice[r.reason] = { last: 0, n: 0 });\n  if (now - a.last >= L.noticeEveryMs) {\n    const more = a.n > 0 ? ' (+' + a.n + ' más)' : '';\n    const quien = r.dev ? ' · ' + r.dev : r.kind && r.kind !== '?' ? ' · ' + r.kind : '';\n    cmds.push({ payload: { kind: 'security.notice', level: r.reason === 'bad_signature' || r.reason === 'replay' || r.reason === 'anomaly' ? 'critical' : 'warning', message: 'Rechazado: ' + (WHY[r.reason] || r.reason) + quien + more } });\n    a.last = now; a.n = 0;\n  } else {\n    a.n++;\n  }\n}\nreturn [points.length ? { payload: points } : null, cmds.length ? cmds : null];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "x": 610,
+    "y": 250,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_influx_batch"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_status_ws",
+    "type": "status",
+    "name": "Conexiones del WebSocket",
+    "scope": [
+      "casa_ws_in"
+    ],
+    "x": 160,
+    "y": 250,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_sesion-cerrar"
+      ]
+    ]
+  },
+  {
+    "id": "casa_sesion-cerrar",
+    "type": "function",
+    "name": "Olvidar sesión desconectada",
+    "func": "// ── Criptografía y seguridad del canal (generado) ───────────────────\nconst SEC = global.get('sec');\nconst RT = global.get('secRt');\nconst hmacHex = (key, data) => crypto.createHmac('sha256', key).update(data).digest('hex');\nconst sha256Hex = (data) => crypto.createHash('sha256').update(data).digest('hex');\nconst ctEq = (aHex, bHex) => { try { const a = Buffer.from(String(aHex), 'hex'), b = Buffer.from(String(bHex), 'hex'); return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b); } catch (e) { return false; } };\nconst deviceKey = (dev) => RT.devKeys[dev] || (RT.devKeys[dev] = crypto.createHmac('sha256', RT.master).update('casa-iot/device/v1/' + dev).digest());\nconst sortedPairs = (o) => Object.keys(o || {}).sort().map((k) => [k, o[k]]);\nconst canon = (m, tags, f, ts) => JSON.stringify([m, sortedPairs(tags), sortedPairs(f), ts]);\n// ─────────────────────────────────────────────────────────────────────\n\n// El nodo «Frontend → Node-RED» avisa (nodo status) cuando un cliente se desconecta. Se borra su sesión y las\n// confirmaciones que tenía pendientes: un cliente que vuelve a conectar empieza otra vez como LECTOR.\nconst st = msg.status || {};\nconst sid = (msg._session && msg._session.id) || (st._session && st._session.id);\nif (RT && sid && st.event === 'disconnect') {\n  delete RT.sessions[sid];\n  for (const c of Object.keys(RT.pending)) if (RT.pending[c].sid === sid) delete RT.pending[c];\n}\nreturn null;\n",
+    "outputs": 0,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "x": 380,
+    "y": 250,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_link_cmd_in",
+    "type": "link in",
+    "name": "comandos",
+    "links": [
+      "casa_link_cmd_out"
+    ],
+    "x": 160,
+    "y": 230,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_router"
+      ]
+    ]
+  },
+  {
+    "id": "casa_router",
+    "type": "switch",
+    "name": "Enrutador por kind",
+    "property": "payload.kind",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "eq",
+        "v": "light.set",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "regex",
+        "v": "^(smoke|heat|humidity)\\.simulate$",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "eq",
+        "v": "pir.simulate",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "eq",
+        "v": "door.set",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "eq",
+        "v": "ac.set",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "eq",
+        "v": "plug.set",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "regex",
+        "v": "^security\\.",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "eq",
+        "v": "scene.apply",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "eq",
+        "v": "world.setHour",
+        "vt": "str",
+        "case": false
+      },
+      {
+        "t": "eq",
+        "v": "snapshot.request",
+        "vt": "str",
+        "case": false
+      }
+    ],
+    "checkall": "false",
+    "repair": false,
+    "outputs": 10,
+    "x": 840,
+    "y": 330,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_luces"
+      ],
+      [
+        "casa_humo-simular"
+      ],
+      [
+        "casa_pir"
+      ],
+      [
+        "casa_puertas"
+      ],
+      [
+        "casa_aire-acondicionado"
+      ],
+      [
+        "casa_enchufes"
+      ],
+      [
+        "casa_seguridad"
+      ],
+      [
+        "casa_escenas"
+      ],
+      [
+        "casa_mundo"
+      ],
+      [
+        "casa_snapshot"
+      ]
+    ]
+  },
+  {
+    "id": "casa_link_tel_out",
+    "type": "link out",
+    "name": "→ telemetría",
+    "mode": "link",
+    "links": [
+      "casa_link_tel_in"
+    ],
+    "x": 1410,
+    "y": 330,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_link_cmd_out",
+    "type": "link out",
+    "name": "→ comandos",
+    "mode": "link",
+    "links": [
+      "casa_link_cmd_in"
+    ],
+    "x": 1410,
+    "y": 400,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_luces",
+    "type": "function",
+    "name": "Luces",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comando: { kind:'light.set', id, patch:{ on?, intensity?, color? }, auto?, quiet? }\n//   auto  = lo pidió una automatización (PIR), no una persona\n//   quiet = viene de una escena: no llenar el log\nconst L = S.lights[cmd.id];\nif (!L || !cmd.patch) return null;\n\nconst patch = {};\nif (cmd.patch.on !== undefined) patch.on = !!cmd.patch.on;\nif (cmd.patch.intensity !== undefined) patch.intensity = clamp(Math.round(Number(cmd.patch.intensity) || 0), 0, 100);\nif (typeof cmd.patch.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(cmd.patch.color)) patch.color = cmd.patch.color;\n\nconst prevOn = L.on;\nObject.assign(L, patch);\n\n// Si la toca una persona, deja de ser \"automática\": el PIR ya no la apaga\nif (!cmd.auto) for (const p of Object.keys(S.pirAuto)) S.pirAuto[p] = S.pirAuto[p].filter((x) => x !== cmd.id);\n\nout.push({ type: 'light', id: cmd.id, patch });\nif (!cmd.auto && patch.on !== undefined && patch.on !== prevOn) {\n  log('info', nameOf(cfg.LIGHTS, cmd.id), patch.on ? 'Luz encendida' : 'Luz apagada', cmd.quiet);\n}\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 150,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_humo-simular",
+    "type": "function",
+    "name": "Eventos de sensor (humo, calor, humedad)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comandos: smoke.simulate {active} · heat.simulate {active} · humidity.simulate {active}\n// Piden que un sensor produzca una lectura alta para ver las alertas. No encienden ni apagan dispositivos.\nconst LONG = 10 * 60 * 1000;\nif (cmd.kind === 'smoke.simulate') {\n  S.smoke.leak = !!cmd.active;\n  log(S.smoke.leak ? 'warning' : 'info', cfg.SMOKE.label, S.smoke.leak ? 'Fuga de humo simulada iniciada' : 'Fuga de humo simulada detenida');\n} else if (cmd.kind === 'heat.simulate') {\n  S.ev.heat = cmd.active ? now + cfg.SENSORS.events.heatKitchen.durationSec * 1000 : 0;\n  log(cmd.active ? 'warning' : 'info', 'Sensor de temperatura', cmd.active ? 'Evento de calor en la cocina iniciado' : 'Evento de calor en la cocina detenido');\n} else if (cmd.kind === 'humidity.simulate') {\n  S.ev.hum = cmd.active ? now + cfg.SENSORS.events.humidityBath.durationSec * 1000 : 0;\n  log(cmd.active ? 'warning' : 'info', 'Sensor de humedad', cmd.active ? 'Evento de humedad en el baño iniciado' : 'Evento de humedad en el baño detenido');\n} else {\n  return null;\n}\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 206,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pir",
+    "type": "function",
+    "name": "Detector de movimiento (PIR)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comando: { kind:'pir.simulate', id }\n// Enciende las luces vinculadas durante cfg.PIR_HOLD_MS; las apaga el nodo «Expiraciones».\nconst def = cfg.PIRS.find((p) => p.id === cmd.id);\nif (!def) return null;\n\nconst was = !!S.pirMotion[def.id];\nS.pirMotion[def.id] = true;\nS.pirUntil[def.id] = now + cfg.PIR_HOLD_MS;\nout.push({ type: 'pir', ts: now, id: def.id, motion: true });\nif (!was) log('info', def.label, 'Movimiento detectado');\n\n// Con la casa armada «fuera de casa», cualquier movimiento es una intrusión\nif (S.security.mode === 'away') cmds.push({ kind: 'security.trigger', cause: 'Movimiento en ' + def.label });\n\nconst auto = S.pirAuto[def.id] || (S.pirAuto[def.id] = []);\nfor (const lightId of def.lightIds) {\n  const l = S.lights[lightId];\n  if (l && !l.on && !auto.includes(lightId)) {\n    auto.push(lightId);\n    cmds.push({ kind: 'light.set', id: lightId, patch: { on: true }, auto: true });\n    log('info', def.label, 'Luz «' + nameOf(cfg.LIGHTS, lightId) + '» encendida automáticamente (' + cfg.PIR_HOLD_MS / 1000 + ' s)');\n  }\n}\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 262,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_puertas",
+    "type": "function",
+    "name": "Puertas",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comando: { kind:'door.set', id, open, quiet? }\nconst def = cfg.DOORS.find((d) => d.id === cmd.id);\nif (!def || !!S.doors[def.id] === !!cmd.open) return null;\n\nS.doors[def.id] = !!cmd.open;\nout.push({ type: 'door', ts: now, id: def.id, open: !!cmd.open });\nlog('info', def.label, cmd.open ? 'Puerta abierta' : 'Puerta cerrada', cmd.quiet);\n\n// Solo las puertas con sensor (perímetro) pueden disparar la alarma\nif (cmd.open && def.sensor) cmds.push({ kind: 'security.trigger', cause: def.label + ' abierta' });\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 318,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_aire-acondicionado",
+    "type": "function",
+    "name": "Aire acondicionado (comandos)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comando: { kind:'ac.set', id, patch:{ on?, mode?, setpoint?, fan? }, quiet? }\n// El termostato (compresor on/off) corre cada segundo en el nodo «Clima y termostato».\nconst ac = S.acs[cmd.id];\nconst def = cfg.AIR_CONDITIONERS.find((a) => a.id === cmd.id);\nif (!ac || !def || !cmd.patch) return null;\n\nconst p = cmd.patch;\nconst prev = Object.assign({}, ac);\nif (p.on !== undefined) ac.on = !!p.on;\nif (p.mode === 'cool' || p.mode === 'fan') ac.mode = p.mode;\nif (p.fan === 'low' || p.fan === 'mid' || p.fan === 'high') ac.fan = p.fan;\nif (p.setpoint !== undefined) ac.setpoint = clamp(Math.round(Number(p.setpoint) || 24), cfg.CLIMATE.acSetpointMin, cfg.CLIMATE.acSetpointMax);\nif (!ac.on) { ac.running = false; ac.watts = 0; }\nif (p.on !== undefined || p.setpoint !== undefined || p.mode !== undefined) delete S.acReached[ac.id];\n\nout.push({ type: 'ac', id: ac.id, patch: { on: ac.on, mode: ac.mode, setpoint: ac.setpoint, fan: ac.fan, running: ac.running, watts: ac.watts } });\n\nconst who = 'A/C ' + def.label;\nif (ac.on !== prev.on) log('info', who, ac.on ? 'Encendido · ' + (ac.mode === 'cool' ? 'frío a ' + ac.setpoint + ' °C' : 'ventilador') : 'Apagado', cmd.quiet);\nelse if (ac.mode !== prev.mode) log('info', who, ac.mode === 'cool' ? 'Modo frío' : 'Modo ventilador', cmd.quiet);\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 374,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_enchufes",
+    "type": "function",
+    "name": "Enchufes inteligentes",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comando: { kind:'plug.set', id, on, reason?, quiet? }   reason:'timer' = apagado automático\nconst def = cfg.PLUGS.find((p) => p.id === cmd.id);\nconst st = S.plugs[cmd.id];\nif (!def || !st || st.on === !!cmd.on) return null;\n\nst.on = !!cmd.on;\nst.watts = st.on ? def.watts : 0;\nst.offAt = st.on && def.autoOffSec ? now + def.autoOffSec * 1000 : null;\nout.push({ type: 'plug', id: def.id, patch: { on: st.on, watts: st.watts } });\n\nif (cmd.reason === 'timer') log('info', def.label, 'Apagado automático (temporizador de ' + def.autoOffSec + ' s)');\nelse log('info', def.label, st.on ? 'Enchufe encendido' : 'Enchufe apagado', cmd.quiet);\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 430,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_seguridad",
+    "type": "function",
+    "name": "Seguridad (alarma de intrusión)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds), wrap(delayed)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comandos: security.set {mode} · security.trigger {cause} (interno) · security.simulateIntrusion · security.notice {level,message} (interno: avisos de seguridad del canal)\n//   desarmada → nada vigila · en casa → puertas exteriores · fuera → puertas + PIR\nconst LABEL = { disarmed: 'Desarmada', home: 'Armada · en casa', away: 'Armada · fuera de casa' };\n\nif (cmd.kind === 'security.set') {\n  const mode = cmd.mode;\n  if (!LABEL[mode]) return null;\n  if (mode !== 'disarmed') {\n    const open = cfg.DOORS.find((d) => d.sensor && S.doors[d.id]);\n    if (open) {\n      log('warning', 'Seguridad', 'No se puede armar: ' + open.label + ' está abierta');\n      out.push({ type: 'security', state: Object.assign({}, S.security) });\n      return done();\n    }\n  }\n  S.security = { mode, alarm: false, cause: null };\n  out.push({ type: 'security', state: Object.assign({}, S.security) });\n  log(mode === 'disarmed' ? 'info' : 'warning', 'Seguridad', LABEL[mode], cmd.quiet);\n\n} else if (cmd.kind === 'security.trigger') {\n  if (S.security.mode === 'disarmed' || S.security.alarm) return null;\n  S.security = Object.assign({}, S.security, { alarm: true, cause: String(cmd.cause || 'Intrusión') });\n  out.push({ type: 'security', state: Object.assign({}, S.security) });\n  log('critical', 'Seguridad', 'ALARMA DE INTRUSIÓN: ' + S.security.cause);\n\n} else if (cmd.kind === 'security.simulateIntrusion') {\n  const door = cfg.DOORS.find((d) => d.sensor);\n  const pir = cfg.PIRS.find((p) => p.primary) || cfg.PIRS[0];\n  log('warning', 'Simulación', 'Intrusión simulada: puerta de entrada y movimiento');\n  if (door) cmds.push({ kind: 'door.set', id: door.id, open: true });\n  delayed.push({ kind: 'pir.simulate', id: pir.id });   // llega 1.2 s después (nodo delay)\n} else if (cmd.kind === 'security.notice') {\n  // Solo llega desde dentro (auditoría): el WebSocket no puede enviar este tipo (no está en la política de capacidades)\n  log(cmd.level === 'critical' ? 'critical' : 'warning', 'Seguridad IoT', String(cmd.message || '').slice(0, 200));\n} else {\n  return null;\n}\nreturn done();\n",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 486,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ],
+      [
+        "casa_delay_intrusion"
+      ]
+    ]
+  },
+  {
+    "id": "casa_delay_intrusion",
+    "type": "delay",
+    "name": "Retraso 1.2 s",
+    "pauseType": "delay",
+    "timeout": "1.2",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "allowrate": false,
+    "outputs": 1,
+    "x": 1230,
+    "y": 508,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_escenas",
+    "type": "function",
+    "name": "Escenas",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Comando: { kind:'scene.apply', id }\n// Una escena NO toca el estado: lanza comandos normales (con quiet:true) por el mismo\n// enrutador que usa la interfaz. Así cada dispositivo aplica sus propias reglas.\nconst sc = cfg.SCENES.find((s) => s.id === cmd.id);\nif (!sc) return null;\n\nlog('info', 'Escena', '«' + sc.label + '» activada');\nconst q = true;\n\nif (sc.doorsClose) for (const d of cfg.DOORS) cmds.push({ kind: 'door.set', id: d.id, open: false, quiet: q });\n\nfor (const l of cfg.LIGHTS) {\n  const c = sc.lights[l.id];\n  if (c) cmds.push({ kind: 'light.set', id: l.id, patch: { on: true, intensity: c.intensity, color: c.color || cfg.DEFAULT_LIGHT_COLOR }, quiet: q });\n  else if (sc.lightsOthers === 'off') cmds.push({ kind: 'light.set', id: l.id, patch: { on: false }, quiet: q });\n}\nfor (const a of cfg.AIR_CONDITIONERS) {\n  const c = sc.ac && sc.ac[a.id];\n  if (c) {\n    const patch = { on: c.on, mode: 'cool' };\n    if (c.setpoint) patch.setpoint = c.setpoint;\n    if (c.fan) patch.fan = c.fan;\n    cmds.push({ kind: 'ac.set', id: a.id, patch, quiet: q });\n  } else if (sc.acOthers === 'off') cmds.push({ kind: 'ac.set', id: a.id, patch: { on: false }, quiet: q });\n}\nfor (const p of cfg.PLUGS) {\n  const c = sc.plugs && sc.plugs[p.id];\n  if (c !== undefined) cmds.push({ kind: 'plug.set', id: p.id, on: c, quiet: q });\n  else if (sc.plugsOthers === 'off') cmds.push({ kind: 'plug.set', id: p.id, on: false, quiet: q });\n}\nif (sc.security) cmds.push({ kind: 'security.set', mode: sc.security, quiet: q });\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 542,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_mundo",
+    "type": "function",
+    "name": "Reloj simulado",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// ── Reloj y clima (generado) ─────────────────────────────────────────\nfunction hourNow() { if (S.hourOverride !== null) return S.hourOverride; const d = new Date(); return d.getHours() + d.getMinutes() / 60; }\nfunction outdoorAt(h) { const o = cfg.CLIMATE.outdoor; return o.mean + o.amp * Math.cos(((h - o.peakHour) / 24) * 2 * Math.PI); }\nfunction worldNow() { const h = hourNow(); return { hour: round(h, 2), outdoorTemp: round(outdoorAt(h), 1), hourOverride: S.hourOverride !== null }; }\nconst gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 0.5; // ruido ≈ N(0,1)\nfunction daylight(h) { const x = Math.sin(((h - 6) / 12) * Math.PI); return Math.max(0, Math.min(1, x * 1.6)); }\nfunction climateRooms() { const r = {}; for (const room of cfg.ROOMS) { const s = S.rooms[room.id]; r[room.id] = { temperature: round(s.t, 1), humidity: Math.round(s.h), lux: Math.round(s.lux || 0) }; } return r; }\n// ─────────────────────────────────────────────────────────────────────\n\n// Comando: { kind:'world.setHour', hour }   hour:null → vuelve a la hora del equipo\nconst h = cmd.hour;\nS.hourOverride = h === null || h === undefined ? null : clamp(Number(h) || 0, 0, 23.99);\nif (S.hourOverride === null) log('info', 'Reloj', 'Hora automática (la del equipo)');\nout.push({ type: 'climate', ts: now, rooms: climateRooms(), world: worldNow() });\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 598,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_snapshot",
+    "type": "function",
+    "name": "Snapshot del estado",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds)];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// ── Reloj y clima (generado) ─────────────────────────────────────────\nfunction hourNow() { if (S.hourOverride !== null) return S.hourOverride; const d = new Date(); return d.getHours() + d.getMinutes() / 60; }\nfunction outdoorAt(h) { const o = cfg.CLIMATE.outdoor; return o.mean + o.amp * Math.cos(((h - o.peakHour) / 24) * 2 * Math.PI); }\nfunction worldNow() { const h = hourNow(); return { hour: round(h, 2), outdoorTemp: round(outdoorAt(h), 1), hourOverride: S.hourOverride !== null }; }\nconst gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 0.5; // ruido ≈ N(0,1)\nfunction daylight(h) { const x = Math.sin(((h - 6) / 12) * Math.PI); return Math.max(0, Math.min(1, x * 1.6)); }\nfunction climateRooms() { const r = {}; for (const room of cfg.ROOMS) { const s = S.rooms[room.id]; r[room.id] = { temperature: round(s.t, 1), humidity: Math.round(s.h), lux: Math.round(s.lux || 0) }; } return r; }\n// ─────────────────────────────────────────────────────────────────────\n\n// Comando: { kind:'snapshot.request' }. Si viene de un cliente (msg._session) responde solo\n// a ese cliente; si lo pide el sistema (al reiniciar), llega a todos.\nconst clone = (o) => JSON.parse(JSON.stringify(o));\nconst P = S.lastPower;\nconst state = {\n  lights: clone(S.lights),\n  smoke: { ppm: Math.round(S.smoke.ppm), alarm: S.smoke.alarm, simulating: S.smoke.leak },\n  pir: Object.fromEntries(cfg.PIRS.map((p) => [p.id, { motion: !!S.pirMotion[p.id], lastTriggerAt: null }])),\n  doors: Object.fromEntries(cfg.DOORS.map((d) => [d.id, { open: !!S.doors[d.id] }])),\n  power: { watts: P ? P.watts : cfg.METER.baseLoadW, kwhTotal: S.kwh, breakdown: P ? P.breakdown : undefined },\n  climate: climateRooms(),\n  acs: clone(S.acs),\n  plugs: Object.fromEntries(cfg.PLUGS.map((p) => [p.id, { id: p.id, on: S.plugs[p.id].on, watts: S.plugs[p.id].watts, kwh: S.plugs[p.id].kwh }])),\n  security: Object.assign({}, S.security),\n  world: worldNow(),\n  events: (S.events || []).slice().reverse(),\n  alerts: Object.entries(S.alerts || {}).map(([id, x]) => ({ id, level: x.level, message: x.message, since: x.since })),\n  pipeline: { writes: { batches: S.pipe.batches, points: S.pipe.points, lastBatchAt: S.pipe.lastBatchAt, errors: S.pipe.errors, lastError: S.pipe.lastError, lastErrorAt: S.pipe.lastErrorAt }, store: S.pipe.store, api: S.pipe.api },     // más recientes primero (como el log de la interfaz)\n};\nconst reply = { payload: { type: 'snapshot', state } };\nif (msg._session) reply._session = msg._session;\nreturn [[reply], []];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 654,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "casa_c_CSimulaci",
+    "type": "comment",
+    "name": "C · Simulación — cada segundo: expiraciones → humo → clima/A/C → energía → alertas → InfluxDB",
+    "info": "",
+    "x": 520,
+    "y": 720,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_inj_tick",
+    "type": "inject",
+    "name": "Tick 1 s",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "1",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "1.5",
+    "topic": "tick",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 760,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_expiraciones"
+      ]
+    ]
+  },
+  {
+    "id": "casa_expiraciones",
+    "type": "function",
+    "name": "Expiraciones (PIR y temporizadores)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), wrap(cmds), [msg]];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Se ejecuta cada segundo: fin del movimiento (apaga las luces automáticas) y\n// apagado automático de enchufes con temporizador.\nfor (const def of cfg.PIRS) {\n  const until = S.pirUntil[def.id];\n  if (!S.pirMotion[def.id] || !until || now < until) continue;\n\n  S.pirMotion[def.id] = false;\n  S.pirUntil[def.id] = null;\n  out.push({ type: 'pir', ts: now, id: def.id, motion: false });\n\n  const offLabels = [];\n  for (const lightId of S.pirAuto[def.id] || []) {\n    // ¿otro PIR todavía necesita esta luz?\n    const held = cfg.PIRS.some((o) => o.id !== def.id && S.pirMotion[o.id] && (S.pirAuto[o.id] || []).includes(lightId));\n    if (!held && S.lights[lightId] && S.lights[lightId].on) {\n      cmds.push({ kind: 'light.set', id: lightId, patch: { on: false }, auto: true });\n      offLabels.push(nameOf(cfg.LIGHTS, lightId));\n    }\n  }\n  S.pirAuto[def.id] = [];\n  log('info', def.label, offLabels.length ? 'Sin movimiento · luces apagadas (' + offLabels.join(', ') + ')' : 'Sin movimiento');\n}\n\nfor (const p of cfg.PLUGS) {\n  const st = S.plugs[p.id];\n  if (st.on && st.offAt && now >= st.offAt) cmds.push({ kind: 'plug.set', id: p.id, on: false, reason: 'timer' });\n}\nreturn done();\n",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 430,
+    "y": 760,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_link_cmd_out"
+      ],
+      [
+        "casa_humo-tick"
+      ]
+    ]
+  },
+  {
+    "id": "casa_humo-tick",
+    "type": "function",
+    "name": "Sensor de humo (cada 1 s)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), [msg]];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Simula la lectura del sensor MQ-2/MQ-135 de la cocina: ruido normal ≈ 12 ppm; con fuga sube a ~470–510.\nconst sm = S.smoke;\nconst cooking = S.ev.heat > now ? 25 : 0;   // cocinar suelta algo de humo, sin llegar a la alarma\nconst target = sm.leak ? 470 + Math.random() * 40 : cfg.SMOKE.normalPpm + cooking + (Math.random() - 0.5) * 6;\nconst k = sm.leak ? 0.4 : 0.25;\nsm.ppm += (target - sm.ppm) * k + (Math.random() - 0.5) * 3;\nsm.ppm = Math.max(5, sm.ppm);\n\nconst was = sm.alarm;\n// Histéresis: alarma al superar el umbral; se libera por debajo del 75 %\nif (!was && sm.ppm > cfg.SMOKE.alarmThresholdPpm) sm.alarm = true;\nif (was && sm.ppm < cfg.SMOKE.alarmThresholdPpm * 0.75) sm.alarm = false;\nif (sm.alarm !== was) {\n  log(sm.alarm ? 'critical' : 'info', cfg.SMOKE.label,\n    sm.alarm ? 'ALARMA: humo ' + Math.round(sm.ppm) + ' ppm (umbral ' + cfg.SMOKE.alarmThresholdPpm + ' ppm)' : 'Alarma de humo normalizada');\n}\nout.push({ type: 'smoke', ts: now, ppm: Math.round(sm.ppm), alarm: sm.alarm, simulating: sm.leak });\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 740,
+    "y": 760,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_clima-tick"
+      ]
+    ]
+  },
+  {
+    "id": "casa_clima-tick",
+    "type": "function",
+    "name": "Clima y termostato A/C (cada 1 s)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), [msg]];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// ── Reloj y clima (generado) ─────────────────────────────────────────\nfunction hourNow() { if (S.hourOverride !== null) return S.hourOverride; const d = new Date(); return d.getHours() + d.getMinutes() / 60; }\nfunction outdoorAt(h) { const o = cfg.CLIMATE.outdoor; return o.mean + o.amp * Math.cos(((h - o.peakHour) / 24) * 2 * Math.PI); }\nfunction worldNow() { const h = hourNow(); return { hour: round(h, 2), outdoorTemp: round(outdoorAt(h), 1), hourOverride: S.hourOverride !== null }; }\nconst gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 0.5; // ruido ≈ N(0,1)\nfunction daylight(h) { const x = Math.sin(((h - 6) / 12) * Math.PI); return Math.max(0, Math.min(1, x * 1.6)); }\nfunction climateRooms() { const r = {}; for (const room of cfg.ROOMS) { const s = S.rooms[room.id]; r[room.id] = { temperature: round(s.t, 1), humidity: Math.round(s.h), lux: Math.round(s.lux || 0) }; } return r; }\n// ─────────────────────────────────────────────────────────────────────\n\n// Modelo térmico por habitación:\n//   temperatura → tiende al exterior (menos aislamiento) + calor de luces y enchufes\n//   A/C en frío → el compresor enciende/apaga con histéresis alrededor de la consigna\n//   humedad     → baja con la temperatura y cuando el compresor trabaja (deshumidifica)\nconst C = cfg.CLIMATE;\nconst hour = hourNow();\nconst tout = outdoorAt(hour);\nconst SE = cfg.SENSORS;\nconst day = daylight(hour);\n\n// Eventos domésticos al azar (o pedidos desde la interfaz): cocinar y ducharse\nconst startRandom = (key, every, durSec) => { if (S.ev[key] <= now && every > 0 && Math.random() < 1 / every) S.ev[key] = now + durSec * 1000; };\nstartRandom('heat', SE.events.heatKitchen.everySec, SE.events.heatKitchen.durationSec);\nstartRandom('hum', SE.events.humidityBath.everySec, SE.events.humidityBath.durationSec);\nS.lvl.heat += ((S.ev.heat > now ? 1 : 0) - S.lvl.heat) * 0.08;   // suben y bajan despacio, como una sonda real\nS.lvl.hum += ((S.ev.hum > now ? 1 : 0) - S.lvl.hum) * 0.08;\n\n// Vatios de luces y enchufes por habitación (ganancia de calor)\nconst loads = {};\nfor (const l of cfg.LIGHTS) {\n  const st = S.lights[l.id];\n  if (st.on) loads[l.room] = (loads[l.room] || 0) + (st.intensity / 100) * cfg.METER.lightMaxW;\n}\nfor (const p of cfg.PLUGS) {\n  const st = S.plugs[p.id];\n  if (st.on) loads[p.room] = (loads[p.room] || 0) + st.watts;\n}\n\nfunction runAc(ac, roomTemp) {\n  const f = cfg.AC_POWER.fanFactor[ac.fan];\n  let running = ac.running;\n  if (ac.on && ac.mode === 'cool') {\n    if (!running && roomTemp > ac.setpoint + C.hysteresis) running = true;\n    else if (running && roomTemp < ac.setpoint - C.hysteresis) {\n      running = false;\n      if (!S.acReached[ac.id]) {                       // avisar solo la primera vez\n        S.acReached[ac.id] = true;\n        log('info', 'A/C ' + nameOf(cfg.AIR_CONDITIONERS, ac.id), 'Alcanzó ' + ac.setpoint + ' °C');\n      }\n    }\n  } else running = false;\n  ac.running = running;\n  ac.watts = !ac.on ? 0 : running ? Math.round(cfg.AC_POWER.coolingW * f * (0.92 + Math.random() * 0.16)) : Math.round(cfg.AC_POWER.fanW * f);\n  return running ? C.coolPerTick * f : 0;\n}\n\nfor (const room of cfg.ROOMS) {\n  const st = S.rooms[room.id];\n  const target = tout - C.insulation + ((loads[room.id] || 0) / 1000) * C.gainPerKw;\n  st.t += (target - st.t) * C.leakPerTick;\n  // Cocinando: la estufa calienta el aire de la cocina mucho más rápido que lo que cambia el resto de la casa\n  if (room.id === 'cocina') st.t += (Math.max(st.t, SE.events.heatKitchen.toC) - st.t) * 0.05 * S.lvl.heat;\n\n  let cooling = 0;\n  for (const def of cfg.AIR_CONDITIONERS) if (def.room === room.id) cooling += runAc(S.acs[def.id], st.t);\n  st.t -= cooling;\n  st.t += (Math.random() - 0.5) * 0.03;\n\n  let hTarget = clamp(78 - (st.t - 20) * 2.2 - (cooling > 0 ? 10 : 0), 32, 90);\n  if (room.id === 'bano_principal') hTarget += (SE.events.humidityBath.toPct - hTarget) * S.lvl.hum;   // ducha\n  st.h = clamp(st.h + (hTarget - st.h) * 0.06 + gauss() * SE.noise.humidity * 0.5, 20, 99);\n\n  // Luminosidad (luxómetro): luz natural por las ventanas + la de los bombillos encendidos de la habitación\n  const lf = SE.luxFactor[room.id] !== undefined ? SE.luxFactor[room.id] : SE.luxFactor.default;\n  let artificial = 0;\n  for (const l of cfg.LIGHTS) if (l.room === room.id && S.lights[l.id].on) artificial += (S.lights[l.id].intensity / 100) * SE.luxPerLightAt100;\n  st.lux = Math.max(0, day * SE.luxMaxIndoor * lf + artificial + gauss() * SE.noise.lux * (day > 0 || artificial > 0 ? 1 : 0.2));\n}\n\n// Solo se publica el A/C si cambió algo (menos tráfico por el WebSocket)\nfor (const def of cfg.AIR_CONDITIONERS) {\n  const a = S.acs[def.id];\n  const prev = S.last.ac[a.id];\n  if (!prev || prev.running !== a.running || prev.watts !== a.watts) {\n    S.last.ac[a.id] = { running: a.running, watts: a.watts };\n    out.push({ type: 'ac', id: a.id, patch: { running: a.running, watts: a.watts } });\n  }\n}\nout.push({ type: 'climate', ts: now, rooms: climateRooms(), world: worldNow() });\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1050,
+    "y": 760,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_energia-tick"
+      ]
+    ]
+  },
+  {
+    "id": "casa_energia-tick",
+    "type": "function",
+    "name": "Potencia y energía (cada 1 s)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), [msg]];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Suma base + luces + A/C + enchufes e integra los kWh del medidor general.\n// cfg.METER.energyTimeScale acelera la integración (60 → 1 s real = 1 min simulado).\nconst M = cfg.METER;\nconst base = M.baseLoadW + 6 * Math.sin(now / 9000) + (Math.random() - 0.5) * 4;   // nevera + standby\n\nlet lights = 0;\nfor (const l of Object.values(S.lights)) if (l.on) lights += (l.intensity / 100) * M.lightMaxW;\n\nlet ac = 0;\nfor (const a of Object.values(S.acs)) ac += a.watts;\n\nlet plugs = 0;\nfor (const def of cfg.PLUGS) {\n  const p = S.plugs[def.id];\n  const w = !p.on ? 0 : def.profile === 'cycle'\n    ? def.watts * (0.35 + 0.65 * Math.abs(Math.sin(now / 4000)))     // lavado / centrifugado\n    : def.watts * (0.94 + Math.random() * 0.12);\n  const prev = S.last.plug[def.id];\n  p.watts = Math.round(w);\n  p.kwh += (p.watts / 3600 / 1000) * M.energyTimeScale;               // kWh = W·h/1000\n  plugs += p.watts;\n  if (p.on || !prev || prev.watts !== p.watts) {\n    S.last.plug[def.id] = { watts: p.watts };\n    out.push({ type: 'plug', id: def.id, patch: { watts: p.watts, kwh: p.kwh } });\n  }\n}\n\nconst breakdown = { base: round(base, 1), lights: round(lights, 1), ac: Math.round(ac), plugs: Math.round(plugs) };\nconst watts = round(breakdown.base + breakdown.lights + breakdown.ac + breakdown.plugs, 1);\nS.kwh += (watts / 3600 / 1000) * M.energyTimeScale;\nS.lastPower = { ts: now, watts, kwhTotal: S.kwh, breakdown };\n\nout.push({ type: 'power', ts: now, watts, kwhTotal: S.kwh, breakdown });\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 430,
+    "y": 830,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_alertas"
+      ]
+    ]
+  },
+  {
+    "id": "casa_alertas",
+    "type": "function",
+    "name": "Alertas (umbrales)",
+    "func": "// ── Preámbulo común (generado) ───────────────────────────────────────\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) { node.status({ fill: 'yellow', shape: 'ring', text: 'sin inicializar' }); return null; }\nconst cmd = msg.payload || {};\nconst now = Date.now();\nconst out = [];      // TelemetryMessage → WebSocket + InfluxDB\nconst cmds = [];     // comandos internos → vuelven al enrutador\nconst delayed = [];  // comandos con retraso\nlet seq = flow.get('seq') || 0;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst round = (v, d = 0) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst nameOf = (list, id) => { const x = list.find((i) => i.id === id); return x ? x.label : id; };\nfunction log(level, source, message, quiet) {\n  if (quiet && level === 'info') return;\n  const ev = { id: 'nr-' + now + '-' + (seq++), ts: now, level, source, message };\n  out.push({ type: 'event', event: ev });\n  const ring = S.events || (S.events = []);      // últimos 50: se envían a quien abra la página después\n  ring.push(ev);\n  if (ring.length > 50) ring.shift();\n}\nconst wrap = (arr) => arr.map((p) => ({ payload: p }));\nfunction done() {\n  flow.set('seq', seq);\n  flow.set('state', S);\n  return [wrap(out), [msg]];\n}\n// ── Fin del preámbulo ────────────────────────────────────────────────\n// Compara las lecturas con los umbrales de cfg.ALERTS y levanta o normaliza alertas (con histéresis para que no parpadeen).\n// Cada cambio sale como mensaje `alert`: la interfaz lo muestra y se guarda en InfluxDB (measurement «alerts»).\nconst A = cfg.ALERTS;\nconst want = {};\nif (S.smoke.alarm) want.humo = { level: 'critical', message: 'Humo ' + Math.round(S.smoke.ppm) + ' ppm en la cocina (umbral ' + cfg.SMOKE.alarmThresholdPpm + ')' };\nif (S.security.alarm) want.intrusion = { level: 'critical', message: S.security.cause || 'Intrusión detectada' };\nfor (const r of cfg.ROOMS) {\n  const st = S.rooms[r.id];\n  const tid = 'temperatura:' + r.id;\n  if (st.t > A.tempHighC || (S.alerts[tid] && st.t > A.tempHighClearC)) want[tid] = { level: 'warning', message: 'Temperatura alta en ' + r.label + ': ' + st.t.toFixed(1) + ' °C' };\n  const hid = 'humedad:' + r.id;\n  if (st.h > A.humidityHighPct || (S.alerts[hid] && st.h > A.humidityHighClearPct)) want[hid] = { level: 'warning', message: 'Humedad alta en ' + r.label + ': ' + Math.round(st.h) + ' %' };\n}\nconst w = S.lastPower ? S.lastPower.watts : 0;\nif (w > A.powerHighW || (S.alerts.consumo && w > A.powerHighClearW)) want.consumo = { level: 'warning', message: 'Consumo alto: ' + Math.round(w) + ' W' };\n\nconst quiet = (id) => id === 'humo' || id === 'intrusion';   // estas dos ya registran su propio evento\nfor (const id of Object.keys(want)) {\n  if (S.alerts[id]) continue;\n  S.alerts[id] = { level: want[id].level, message: want[id].message, since: now };\n  out.push({ type: 'alert', ts: now, id, active: true, level: want[id].level, message: want[id].message });\n  if (!quiet(id)) log('warning', 'Alerta', want[id].message);\n}\nfor (const id of Object.keys(S.alerts)) {\n  if (want[id]) continue;\n  const lvl = S.alerts[id].level;\n  delete S.alerts[id];\n  out.push({ type: 'alert', ts: now, id, active: false, level: lvl, message: '' });\n  if (!quiet(id)) log('info', 'Alerta', 'Normalizada: ' + id.replace(':', ' · '));\n}\nreturn done();\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 740,
+    "y": 830,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ],
+      [
+        "casa_persistir"
+      ]
+    ]
+  },
+  {
+    "id": "casa_persistir",
+    "type": "function",
+    "name": "Preparar lecturas para InfluxDB",
+    "func": "// Cada cfg.INFLUX.persistEverySec segundos arma UN lote con todas las mediciones periódicas.\n// Esquema (measurement · tags → fields):\n//   power  · meter        → watts, kwh, base, lights, ac, plugs\n//   smoke  · sensor       → ppm, alarm, simulating\n//   env    · room, sensor → temperature, humidity, lux   (sensor = \"DHT22-<habitación>\"; room \"exterior\" = temperatura exterior)\n//   ac     · id, room     → on, mode, setpoint, running, watts\n//   plug   · id, room     → on, watts, kwh\nconst cfg = global.get('cfg');\nconst S = flow.get('state');\nif (!cfg || !S) return null;\n\nconst every = (cfg.INFLUX && cfg.INFLUX.persistEverySec) || 2;\nconst n = (context.get('n') || 0) + 1;\ncontext.set('n', n);\nif (n % every !== 0) return null;\n\nconst round = (v, d) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);\nconst ts = new Date();\nconst pts = [];\n\nconst P = S.lastPower;\nif (P) {\n  pts.push({ measurement: 'power', tags: { meter: 'Medidor_General' }, timestamp: ts,\n    fields: { watts: P.watts, kwh: round(P.kwhTotal, 6), base: P.breakdown.base, lights: P.breakdown.lights, ac: P.breakdown.ac, plugs: P.breakdown.plugs } });\n}\npts.push({ measurement: 'smoke', tags: { sensor: cfg.SMOKE.id }, timestamp: ts,\n  fields: { ppm: Math.round(S.smoke.ppm), alarm: S.smoke.alarm, simulating: S.smoke.leak } });\n\nfor (const r of cfg.ROOMS) {\n  const st = S.rooms[r.id];\n  pts.push({ measurement: 'env', tags: { room: r.id, sensor: 'DHT22-' + r.id }, timestamp: ts,\n    fields: { temperature: round(st.t, 2), humidity: round(st.h, 1), lux: Math.round(st.lux || 0) } });\n}\nconst o = cfg.CLIMATE.outdoor;\nconst hour = S.hourOverride !== null ? S.hourOverride : new Date().getHours() + new Date().getMinutes() / 60;\npts.push({ measurement: 'env', tags: { room: 'exterior', sensor: 'exterior' }, timestamp: ts,\n  fields: { temperature: round(o.mean + o.amp * Math.cos(((hour - o.peakHour) / 24) * 2 * Math.PI), 2) } });\n\nfor (const a of cfg.AIR_CONDITIONERS) {\n  const s = S.acs[a.id];\n  pts.push({ measurement: 'ac', tags: { id: a.id, room: a.room }, timestamp: ts,\n    fields: { on: s.on, mode: s.mode, setpoint: s.setpoint, running: s.running, watts: s.watts } });\n}\nfor (const p of cfg.PLUGS) {\n  const s = S.plugs[p.id];\n  pts.push({ measurement: 'plug', tags: { id: p.id, room: p.room }, timestamp: ts,\n    fields: { on: s.on, watts: s.watts, kwh: round(s.kwh, 6) } });\n}\n\nmsg.payload = pts;\n// Contadores para el panel «Pipeline IoT» de la interfaz (lo que Node-RED envía a InfluxDB)\nconst pp = S.pipe;\npp.batches += 1; pp.points += pts.length; pp.lastBatchAt = Date.now();\nconst tel = { payload: { type: 'pipeline', ts: pp.lastBatchAt, writes: { batches: pp.batches, points: pp.points, lastBatchAt: pp.lastBatchAt, errors: pp.errors, lastError: pp.lastError, lastErrorAt: pp.lastErrorAt } } };\nnode.status({ fill: 'blue', shape: 'dot', text: pts.length + ' puntos · ' + ts.toLocaleTimeString('es-CO') });\nreturn [msg, tel];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1050,
+    "y": 830,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_firmar-telemetria"
+      ],
+      [
+        "casa_link_tel_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_c_DSalida",
+    "type": "comment",
+    "name": "D · Salida — telemetría a la interfaz (WebSocket) y a la base de datos (InfluxDB)",
+    "info": "",
+    "x": 520,
+    "y": 920,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_link_tel_in",
+    "type": "link in",
+    "name": "telemetría",
+    "links": [
+      "casa_link_tel_out"
+    ],
+    "x": 160,
+    "y": 980,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_serializar",
+        "casa_eventos-influx",
+        "casa_debug_tel"
+      ]
+    ]
+  },
+  {
+    "id": "casa_serializar",
+    "type": "function",
+    "name": "Serializar a JSON",
+    "func": "// El WebSocket envía texto. msg._session (si existe) hace que solo responda a ese cliente.\nmsg.payload = JSON.stringify(msg.payload);\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 430,
+    "y": 960,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_ws_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_ws_out",
+    "type": "websocket out",
+    "name": "Node-RED → Frontend",
+    "server": "cfg_ws",
+    "client": "",
+    "x": 720,
+    "y": 960,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_eventos-influx",
+    "type": "function",
+    "name": "Guardar cambios de estado y eventos",
+    "func": "// Los cambios (luz, puerta, PIR, seguridad) y el log de eventos se guardan en el momento en que ocurren.\n//   light · id → on, intensity, color      door · id → open      pir · id → motion\n//   security   → mode, alarm, cause        events · level, source → message, id\nconst S = flow.get('state');\nconst m = msg.payload;\nif (!m || !S) return null;\nconst ts = new Date(m.ts || (m.event && m.event.ts) || Date.now());\nlet pt = null;\n\nswitch (m.type) {\n  case 'event':\n    pt = { measurement: 'events', tags: { level: m.event.level, source: m.event.source }, timestamp: ts,\n      fields: { message: String(m.event.message), id: String(m.event.id) } };\n    break;\n  case 'light': {\n    const l = S.lights[m.id];\n    if (l) pt = { measurement: 'light', tags: { id: m.id }, timestamp: ts, fields: { on: l.on, intensity: l.intensity, color: l.color } };\n    break;\n  }\n  case 'door':\n    pt = { measurement: 'door', tags: { id: m.id }, timestamp: ts, fields: { open: m.open } };\n    break;\n  case 'pir':\n    pt = { measurement: 'pir', tags: { id: m.id }, timestamp: ts, fields: { motion: m.motion } };\n    break;\n  case 'alert':\n    pt = { measurement: 'alerts', tags: { id: m.id, level: m.level }, timestamp: ts, fields: { active: !!m.active, message: String(m.message || '') } };\n    break;\n  case 'security':\n    pt = { measurement: 'security', tags: {}, timestamp: ts, fields: { mode: m.state.mode, alarm: m.state.alarm, cause: m.state.cause || '' } };\n    break;\n}\nif (!pt) return null;\nmsg.payload = [pt];\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 430,
+    "y": 1020,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_firmar-telemetria"
+      ]
+    ]
+  },
+  {
+    "id": "casa_firmar-telemetria",
+    "type": "function",
+    "name": "Firmar telemetría (dispositivo simulado)",
+    "func": "// ── Criptografía y seguridad del canal (generado) ───────────────────\nconst SEC = global.get('sec');\nconst RT = global.get('secRt');\nconst hmacHex = (key, data) => crypto.createHmac('sha256', key).update(data).digest('hex');\nconst sha256Hex = (data) => crypto.createHash('sha256').update(data).digest('hex');\nconst ctEq = (aHex, bHex) => { try { const a = Buffer.from(String(aHex), 'hex'), b = Buffer.from(String(bHex), 'hex'); return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b); } catch (e) { return false; } };\nconst deviceKey = (dev) => RT.devKeys[dev] || (RT.devKeys[dev] = crypto.createHmac('sha256', RT.master).update('casa-iot/device/v1/' + dev).digest());\nconst sortedPairs = (o) => Object.keys(o || {}).sort().map((k) => [k, o[k]]);\nconst canon = (m, tags, f, ts) => JSON.stringify([m, sortedPairs(tags), sortedPairs(f), ts]);\n// ─────────────────────────────────────────────────────────────────────\n\n// INTEGRIDAD DEL DATO. Cada punto que Node-RED va a guardar sale como un MENSAJE FIRMADO de su dispositivo simulado:\n//   { dev, body, sig }\n//     dev  identidad del dispositivo, p. ej. «sensor:DHT22-sala» o «ac:AC_Sala_Principal»\n//     body texto JSON {\"v\":1,\"dev\",\"m\" medición,\"tags\",\"f\" campos,\"ts\" ms,\"seq\" contador del dispositivo}\n//     sig  HMAC-SHA256(clave del dispositivo, body)  ← la clave se deriva de CASA_DEVICE_KEY: HMAC(maestra, «casa-iot/device/v1/»+dev)\n// El nodo siguiente («Validar telemetría») verifica todo ANTES de escribir en InfluxDB.\n// Límite honesto: aquí el dispositivo y el validador viven en el mismo Node-RED, así que esto NO protege contra\n// alguien que ya controle Node-RED. Protege el camino entre la generación y la base de datos, deja el contrato listo\n// para un dispositivo real (ESP32 firmando por su cuenta, ver POST /api/ingest) y permite detectar alteraciones del histórico.\nconst pts = Array.isArray(msg.payload) ? msg.payload : [];\nconst devOf = (pt) => {\n  const t = pt.tags || {};\n  switch (pt.measurement) {\n    case 'power': return 'meter:' + t.meter;\n    case 'smoke': case 'env': return 'sensor:' + t.sensor;\n    case 'ac': case 'plug': case 'light': case 'door': case 'pir': return pt.measurement + ':' + t.id;\n    case 'security': return 'core:security';\n    case 'alerts': return 'core:alerts';\n    case 'events': return 'core:events';\n    default: return 'desconocido:' + pt.measurement;\n  }\n};\nconst envs = [];\nfor (const pt of pts) {\n  const dev = devOf(pt);\n  const seq = (RT.seqOut[dev] = (RT.seqOut[dev] || 0) + 1);\n  const ts = pt.timestamp instanceof Date ? pt.timestamp.getTime() : Date.now();\n  const body = JSON.stringify({ v: 1, dev, m: pt.measurement, tags: pt.tags || {}, f: pt.fields, ts, seq });\n  envs.push({ dev, body, sig: hmacHex(deviceKey(dev), body) });\n}\nreturn { payload: envs };\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "x": 680,
+    "y": 1020,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_validar-telemetria"
+      ]
+    ]
+  },
+  {
+    "id": "casa_validar-telemetria",
+    "type": "function",
+    "name": "Validar telemetría (firma, ventana, secuencia, esquema, anomalías)",
+    "func": "// ── Criptografía y seguridad del canal (generado) ───────────────────\nconst SEC = global.get('sec');\nconst RT = global.get('secRt');\nconst hmacHex = (key, data) => crypto.createHmac('sha256', key).update(data).digest('hex');\nconst sha256Hex = (data) => crypto.createHash('sha256').update(data).digest('hex');\nconst ctEq = (aHex, bHex) => { try { const a = Buffer.from(String(aHex), 'hex'), b = Buffer.from(String(bHex), 'hex'); return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b); } catch (e) { return false; } };\nconst deviceKey = (dev) => RT.devKeys[dev] || (RT.devKeys[dev] = crypto.createHmac('sha256', RT.master).update('casa-iot/device/v1/' + dev).digest());\nconst sortedPairs = (o) => Object.keys(o || {}).sort().map((k) => [k, o[k]]);\nconst canon = (m, tags, f, ts) => JSON.stringify([m, sortedPairs(tags), sortedPairs(f), ts]);\n// ─────────────────────────────────────────────────────────────────────\n\n// ── Cabeceras de la API: CORS restringido al origen del frontend (generado) ─\nfunction apiHeaders(req) {\n  const h = { 'content-type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };\n  const origin = req && req.headers && req.headers.origin;\n  const allowed = String(env.get('CASA_ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173').split(',').map((x) => x.trim()).filter(Boolean);\n  if (origin && allowed.includes(origin)) { h['Access-Control-Allow-Origin'] = origin; h['Vary'] = 'Origin'; }   // sin origen permitido no se envía la cabecera: el navegador bloquea la respuesta\n  return h;\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// ÚNICO camino hacia InfluxDB para la telemetría. Cada mensaje {dev, body, sig} pasa estas comprobaciones, en este orden:\n//   envelope        el sobre tiene la forma esperada\n//   unknown_device  el dispositivo existe en la configuración de la casa (y, si viene de /api/ingest, acepta ingesta)\n//   bad_signature   HMAC-SHA256 correcto con la clave de ESE dispositivo (comparación en tiempo constante)\n//   stale           la marca de tiempo está dentro de la ventana (telemetry.windowMs)\n//   replay          el número de secuencia es MAYOR que el último aceptado de ese dispositivo\n//   schema / range  medición, etiquetas y campos permitidos, con tipo y rango válidos; todo lo demás se descarta\n//   anomaly         salto físicamente imposible respecto de la lectura anterior → CUARENTENA (no entra como dato confiable)\n// Además agrupa los puntos aceptados en bloques de tiempo y, al cerrar cada bloque, escribe su HUELLA:\n//   hash = HMAC(clave de integridad, prev : bloque : cantidad : SHA256(hashes de los puntos ordenados))\n// Cada huella incluye la anterior (cadena): borrar o alterar puntos o bloques después se puede detectar con infra/verificar-integridad.mjs.\n// Límites: la huella dice QUE un bloque cambió, no CUÁL punto; la cadena vuelve a empezar (GENESIS) cuando se reinicia Node-RED;\n// y quien tenga la clave CASA_DEVICE_KEY podría fabricar huellas válidas (firmante y validador son el mismo Node-RED).\n//   Salida 1 → puntos aceptados → InfluxDB   Salida 2 → auditoría   Salida 3 → respuesta HTTP (solo ingesta)   Salida 4 → huellas → InfluxDB\nconst T = SEC.telemetry;\nconst now = Date.now();\nconst envs = Array.isArray(msg.payload) ? msg.payload : [];\nconst reg = RT.reg || (RT.reg = Object.fromEntries(T.devices.map((d) => [d.dev, d])));\nconst good = [], audits = [], results = [];\nconst ingest = !!msg._ingest;\nconst SAFE = /^[^\\u0000-\\u001f]{1,80}$/;\nconst HEX = /^#[0-9a-fA-F]{6}$/;\n\nconst ruleCheck = (rule, v) => {\n  switch (rule.t) {\n    case 'num': return typeof v !== 'number' || !Number.isFinite(v) ? 'schema' : v < rule.min || v > rule.max ? 'range' : null;\n    case 'bool': return typeof v === 'boolean' ? null : 'schema';\n    case 'str': return typeof v !== 'string' ? 'schema' : v.length > rule.max ? 'range' : null;\n    case 'enum': return typeof v !== 'string' ? 'schema' : rule.v.includes(v) ? null : 'range';\n    case 'hex': return typeof v === 'string' && HEX.test(v) ? null : 'range';\n  }\n  return 'schema';\n};\n\nenvs.forEach((e, i) => {\n  let dev = e && typeof e.dev === 'string' ? e.dev.slice(0, 60) : '?';\n  const fail = (reason, extra) => {\n    RT.stats.telemetryRejected++;\n    audits.push({ payload: Object.assign({ result: 'rejected', reason, kind: 'telemetry', id: dev, role: 'dispositivo', sid: '', dev }, extra || {}) });\n    results.push({ i, ok: false, reason });\n  };\n  if (!e || typeof e.dev !== 'string' || typeof e.body !== 'string' || typeof e.sig !== 'string' || e.body.length > 4096 || !/^[0-9a-f]{64}$/.test(e.sig)) return fail('envelope');\n  const d = reg[e.dev];\n  if (!d || (ingest && !d.ingest)) return fail('unknown_device');\n  if (!ctEq(hmacHex(deviceKey(e.dev), e.body), e.sig)) return fail('bad_signature');   // desde aquí el mensaje es AUTÉNTICO\n\n  let b;\n  try { b = JSON.parse(e.body); } catch (x) { return fail('envelope'); }\n  if (!b || b.v !== 1 || b.dev !== e.dev || typeof b.m !== 'string' || !b.tags || typeof b.tags !== 'object' || Array.isArray(b.tags) || !b.f || typeof b.f !== 'object' || Array.isArray(b.f) || !Number.isInteger(b.ts) || !Number.isInteger(b.seq) || b.seq < 0) return fail('envelope');\n  if (Math.abs(now - b.ts) > T.windowMs) return fail('stale');\n  const last = RT.lastSeq[e.dev] || 0;\n  if (b.seq <= last) return fail('replay');\n  RT.lastSeq[e.dev] = b.seq;\n\n  const sch = T.schema[b.m];\n  if (!sch || b.m !== d.m) return fail('schema');\n  const tk = Object.keys(b.tags);\n  if (d.tags) {                                   // dispositivo con etiquetas fijas: deben coincidir exactamente\n    const dk = Object.keys(d.tags);\n    if (tk.length !== dk.length || dk.some((k) => b.tags[k] !== d.tags[k])) return fail('schema');\n  } else {                                        // eventos y alertas del propio sistema: mismas claves, texto seguro\n    if (tk.length !== sch.tags.length || sch.tags.some((k) => typeof b.tags[k] !== 'string' || !SAFE.test(b.tags[k]))) return fail('schema');\n    if (b.tags.level !== undefined && !['info', 'warning', 'critical'].includes(b.tags.level)) return fail('range');\n  }\n  const fk = Object.keys(b.f);\n  if (!fk.length || fk.some((k) => !Object.prototype.hasOwnProperty.call(sch.fields, k))) return fail('schema');\n  for (const k of fk) { const why = ruleCheck(sch.fields[k], b.f[k]); if (why) return fail(why); }\n\n  // anomalías: saltos que la física no permite entre dos lecturas cercanas del mismo sensor\n  for (const k of fk) {\n    const lim = T.maxJump[k];\n    if (!lim) continue;\n    const prev = RT.lastVal[e.dev + '|' + k];\n    if (prev && Math.abs(b.ts - prev.ts) <= T.jumpMaxGapMs && Math.abs(b.f[k] - prev.v) > lim) {\n      return fail('anomaly', { quarantine: { dev: e.dev, m: b.m, summary: k + ': ' + prev.v + ' → ' + b.f[k] + ' en ' + Math.abs(b.ts - prev.ts) + ' ms (límite ' + lim + ')' } });\n    }\n  }\n  for (const k of fk) if (T.maxJump[k]) RT.lastVal[e.dev + '|' + k] = { v: b.f[k], ts: b.ts };\n\n  // aceptado\n  const tags = ingest ? Object.assign({}, b.tags, { via: 'ingest' }) : b.tags;\n  good.push({ measurement: b.m, tags, fields: b.f, timestamp: new Date(b.ts) });\n  RT.stats.telemetryAccepted++;\n  results.push({ i, ok: true });\n  // Huella del punto, indexada por serie+instante: InfluxDB deja UN solo punto por serie y marca de tiempo (el último gana),\n  // así que aquí también se conserva uno solo, para que el recuento coincida con lo que realmente queda guardado.\n  const blk = Math.floor(b.ts / T.blockMs);\n  (RT.blocks[blk] || (RT.blocks[blk] = { hashes: {} })).hashes[b.m + '|' + JSON.stringify(sortedPairs(tags)) + '|' + b.ts] = sha256Hex(canon(b.m, tags, b.f, b.ts));\n});\n\n// cerrar bloques vencidos y escribir su huella (en orden, para encadenarlas)\nconst digests = [];\nfor (const k of Object.keys(RT.blocks).map(Number).sort((a, b) => a - b)) {\n  if ((k + 1) * T.blockMs + T.graceMs > now) continue;\n  // El bloque en el que arrancó Node-RED solo se vio a medias: no se firma (el verificador lo lista como «sin huella»)\n  if (k * T.blockMs < RT.startedAt) { delete RT.blocks[k]; continue; }\n  const hs = Object.values(RT.blocks[k].hashes).sort();\n  const intKey = RT.intKey || (RT.intKey = crypto.createHmac('sha256', RT.master).update('casa-iot/integrity/v1').digest());\n  const hash = hmacHex(intKey, [RT.prevHash, k, hs.length, sha256Hex(hs.join(''))].join(':'));\n  digests.push({ measurement: 'integrity', tags: { chain: 'main' }, fields: { block_start: k * T.blockMs, block_ms: T.blockMs, count: hs.length, hash, prev: RT.prevHash, genesis: !!RT.genesis }, timestamp: new Date(k * T.blockMs) });\n  RT.prevHash = hash; RT.genesis = false;\n  delete RT.blocks[k];\n}\n\nlet resp = null;\nif (ingest) {\n  const okN = results.filter((r) => r.ok).length;\n  msg.statusCode = okN === results.length ? 202 : okN === 0 ? 422 : 207;\n  msg.headers = apiHeaders(msg.req);\n  msg.payload = { accepted: okN, rejected: results.filter((r) => !r.ok).map((r) => ({ i: r.i, reason: r.reason })) };\n  resp = msg;\n}\nreturn [good.length ? { payload: good } : null, audits.length ? audits : null, resp, digests.length ? { payload: digests } : null];\n",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "x": 930,
+    "y": 1020,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_influx_batch"
+      ],
+      [
+        "casa_auditar"
+      ],
+      [
+        "casa_http_resp"
+      ],
+      [
+        "casa_influx_batch_int"
+      ]
+    ]
+  },
+  {
+    "id": "casa_influx_batch",
+    "type": "influxdb batch",
+    "name": "Guardar en InfluxDB · Casa_IoT",
+    "influxdb": "cfg_influx",
+    "precision": "",
+    "retentionPolicy": "",
+    "database": "",
+    "precisionV18FluxV20": "ms",
+    "retentionPolicyV18Flux": "",
+    "org": "casa",
+    "bucket": "Casa_IoT",
+    "x": 1230,
+    "y": 990,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_influx_batch_int",
+    "type": "influxdb batch",
+    "name": "Huellas de integridad · casa_iot_integridad",
+    "influxdb": "cfg_influx",
+    "precision": "",
+    "retentionPolicy": "",
+    "database": "",
+    "precisionV18FluxV20": "ms",
+    "retentionPolicyV18Flux": "",
+    "org": "casa",
+    "bucket": "casa_iot_integridad",
+    "x": 1230,
+    "y": 1050,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_debug_tel",
+    "type": "debug",
+    "name": "Ver telemetría (activa para depurar)",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 720,
+    "y": 1080,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_c_EAPIREST",
+    "type": "comment",
+    "name": "E · API REST — historial desde InfluxDB (Flux) para las gráficas del frontend",
+    "info": "GET /api/history/power · /smoke · /climate?room=… (from, to en ms; bucket en s) y GET /api/health",
+    "x": 520,
+    "y": 1150,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_influx_in",
+    "type": "influxdb in",
+    "name": "Consultar InfluxDB (Flux)",
+    "influxdb": "cfg_influx_read",
+    "query": "",
+    "rawOutput": false,
+    "precision": "",
+    "retentionPolicy": "",
+    "org": "casa",
+    "x": 860,
+    "y": 1240,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_hist-formato"
+      ]
+    ]
+  },
+  {
+    "id": "casa_hist-formato",
+    "type": "function",
+    "name": "Dar formato a la respuesta",
+    "func": "// ── Cabeceras de la API: CORS restringido al origen del frontend (generado) ─\nfunction apiHeaders(req) {\n  const h = { 'content-type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };\n  const origin = req && req.headers && req.headers.origin;\n  const allowed = String(env.get('CASA_ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173').split(',').map((x) => x.trim()).filter(Boolean);\n  if (origin && allowed.includes(origin)) { h['Access-Control-Allow-Origin'] = origin; h['Vary'] = 'Origin'; }   // sin origen permitido no se envía la cabecera: el navegador bloquea la respuesta\n  return h;\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// Convierte las filas de Flux en [{ ts, value, ... }] (contrato de src/services/history/historyApi.ts).\nconst rows = Array.isArray(msg.payload) ? msg.payload : [];\nconst r2 = (v) => (typeof v === 'number' ? Math.round(v * 100) / 100 : null);\nlet out = [];\n\nif (msg.fmt === 'power') {\n  out = rows.map((r) => ({ ts: Date.parse(r._time), value: r2(r.watts), base: r2(r.base), lights: r2(r.lights), ac: r2(r.ac), plugs: r2(r.plugs) }));\n} else if (msg.fmt === 'smoke') {\n  out = rows.map((r) => ({ ts: Date.parse(r._time), value: r2(r._value) }));\n} else if (msg.fmt === 'climate') {\n  out = rows.map((r) => ({ ts: Date.parse(r._time), value: r2(r[msg.room]), outdoor: r2(r.exterior) }));\n}\nout = out.filter((p) => p.value !== null).sort((a, b) => a.ts - b.ts);\n\nmsg.payload = out;\nmsg.statusCode = 200;\nmsg.headers = apiHeaders(msg.req);\ndelete msg.query;\n\n// Contadores para el panel «Pipeline IoT»: consultas del frontend atendidas leyendo InfluxDB\nconst S = flow.get('state');\nlet tel = null;\nif (S) {\n  const a = S.pipe.api, t = Date.now();\n  a.requests += 1; a.lastRoute = msg._route || null; a.lastMs = msg._t0 ? t - msg._t0 : null; a.lastAt = t; a.lastPoints = out.length;\n  tel = { payload: { type: 'pipeline', ts: t, api: Object.assign({}, a) } };\n}\nreturn [msg, tel];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1160,
+    "y": 1240,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_http_resp"
+      ],
+      [
+        "casa_link_tel_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_http_resp",
+    "type": "http response",
+    "name": "Respuesta JSON",
+    "statusCode": "",
+    "headers": {},
+    "x": 1420,
+    "y": 1240,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_http_hist-power",
+    "type": "http in",
+    "name": "GET /api/history/power",
+    "url": "/api/history/power",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 1220,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_hist-power"
+      ]
+    ]
+  },
+  {
+    "id": "casa_hist-power",
+    "type": "function",
+    "name": "Consulta Flux · potencia",
+    "func": "// ── Rango de consulta (generado) ─────────────────────────────────────\nfunction parseRange(q) {\n  const t = Date.now();\n  const to = Number(q.to) || t;\n  let from = Number(q.from) || to - 15 * 60 * 1000;\n  if (from >= to) from = to - 15 * 60 * 1000;\n  from = Math.max(from, to - 31 * 24 * 3600 * 1000);            // máx. 31 días\n  let every = Math.max(1, Math.round(Number(q.bucket) || 1));\n  every = Math.max(every, Math.ceil((to - from) / 1000 / 2000)); // máx. ~2000 puntos\n  return { start: new Date(from).toISOString(), stop: new Date(to).toISOString(), every };\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// GET /api/history/power?from=<ms>&to=<ms>&bucket=<seg>\nconst r = parseRange(msg.req.query);\nmsg._t0 = Date.now();\nmsg._route = '/history/power';\nconst B = (global.get('cfg').INFLUX || {}).bucket || 'casa_iot';\nmsg.fmt = 'power';\nmsg.query = `from(bucket: \"${B}\")\n  |> range(start: ${r.start}, stop: ${r.stop})\n  |> filter(fn: (r) => r._measurement == \"power\")\n  |> filter(fn: (r) => r._field == \"watts\" or r._field == \"base\" or r._field == \"lights\" or r._field == \"ac\" or r._field == \"plugs\")\n  |> aggregateWindow(every: ${r.every}s, fn: mean, createEmpty: false)\n  |> group()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")`;\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 480,
+    "y": 1220,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_influx_in"
+      ]
+    ]
+  },
+  {
+    "id": "casa_http_hist-smoke",
+    "type": "http in",
+    "name": "GET /api/history/smoke",
+    "url": "/api/history/smoke",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 1270,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_hist-smoke"
+      ]
+    ]
+  },
+  {
+    "id": "casa_hist-smoke",
+    "type": "function",
+    "name": "Consulta Flux · humo",
+    "func": "// ── Rango de consulta (generado) ─────────────────────────────────────\nfunction parseRange(q) {\n  const t = Date.now();\n  const to = Number(q.to) || t;\n  let from = Number(q.from) || to - 15 * 60 * 1000;\n  if (from >= to) from = to - 15 * 60 * 1000;\n  from = Math.max(from, to - 31 * 24 * 3600 * 1000);            // máx. 31 días\n  let every = Math.max(1, Math.round(Number(q.bucket) || 1));\n  every = Math.max(every, Math.ceil((to - from) / 1000 / 2000)); // máx. ~2000 puntos\n  return { start: new Date(from).toISOString(), stop: new Date(to).toISOString(), every };\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// GET /api/history/smoke?from=<ms>&to=<ms>&bucket=<seg>\nconst r = parseRange(msg.req.query);\nmsg._t0 = Date.now();\nmsg._route = '/history/smoke';\nconst B = (global.get('cfg').INFLUX || {}).bucket || 'casa_iot';\nmsg.fmt = 'smoke';\nmsg.query = `from(bucket: \"${B}\")\n  |> range(start: ${r.start}, stop: ${r.stop})\n  |> filter(fn: (r) => r._measurement == \"smoke\" and r._field == \"ppm\")\n  |> aggregateWindow(every: ${r.every}s, fn: max, createEmpty: false)`;\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 480,
+    "y": 1270,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_influx_in"
+      ]
+    ]
+  },
+  {
+    "id": "casa_http_hist-clima",
+    "type": "http in",
+    "name": "GET /api/history/climate",
+    "url": "/api/history/climate",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 1320,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_hist-clima"
+      ]
+    ]
+  },
+  {
+    "id": "casa_hist-clima",
+    "type": "function",
+    "name": "Consulta Flux · temperatura",
+    "func": "// ── Rango de consulta (generado) ─────────────────────────────────────\nfunction parseRange(q) {\n  const t = Date.now();\n  const to = Number(q.to) || t;\n  let from = Number(q.from) || to - 15 * 60 * 1000;\n  if (from >= to) from = to - 15 * 60 * 1000;\n  from = Math.max(from, to - 31 * 24 * 3600 * 1000);            // máx. 31 días\n  let every = Math.max(1, Math.round(Number(q.bucket) || 1));\n  every = Math.max(every, Math.ceil((to - from) / 1000 / 2000)); // máx. ~2000 puntos\n  return { start: new Date(from).toISOString(), stop: new Date(to).toISOString(), every };\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// ── Cabeceras de la API: CORS restringido al origen del frontend (generado) ─\nfunction apiHeaders(req) {\n  const h = { 'content-type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };\n  const origin = req && req.headers && req.headers.origin;\n  const allowed = String(env.get('CASA_ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173').split(',').map((x) => x.trim()).filter(Boolean);\n  if (origin && allowed.includes(origin)) { h['Access-Control-Allow-Origin'] = origin; h['Vary'] = 'Origin'; }   // sin origen permitido no se envía la cabecera: el navegador bloquea la respuesta\n  return h;\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// GET /api/history/climate?room=<id>&from=<ms>&to=<ms>&bucket=<seg>   → habitación + exterior\nconst r = parseRange(msg.req.query);\nmsg._t0 = Date.now();\nmsg._route = '/history/climate';\nconst room = String(msg.req.query.room || '');\nif (!/^[a-z0-9_]+$/.test(room)) { msg.statusCode = 400; msg.payload = { error: 'room inválido' }; msg.headers = apiHeaders(msg.req); return [null, msg]; }\nconst B = (global.get('cfg').INFLUX || {}).bucket || 'casa_iot';\nmsg.fmt = 'climate';\nmsg.room = room;\nmsg.query = `from(bucket: \"${B}\")\n  |> range(start: ${r.start}, stop: ${r.stop})\n  |> filter(fn: (r) => r._measurement == \"env\" and r._field == \"temperature\")\n  |> filter(fn: (r) => r.room == \"${room}\" or r.room == \"exterior\")\n  |> aggregateWindow(every: ${r.every}s, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"room\"])\n  |> group()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"room\"], valueColumn: \"_value\")`;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 480,
+    "y": 1320,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_influx_in"
+      ],
+      [
+        "casa_http_resp"
+      ]
+    ]
+  },
+  {
+    "id": "casa_http_ingest",
+    "type": "http in",
+    "name": "POST /api/ingest",
+    "url": "/api/ingest",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 1490,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_ingesta-recibir"
+      ]
+    ]
+  },
+  {
+    "id": "casa_ingesta-recibir",
+    "type": "function",
+    "name": "Recibir telemetría firmada (POST /api/ingest)",
+    "func": "// ── Criptografía y seguridad del canal (generado) ───────────────────\nconst SEC = global.get('sec');\nconst RT = global.get('secRt');\nconst hmacHex = (key, data) => crypto.createHmac('sha256', key).update(data).digest('hex');\nconst sha256Hex = (data) => crypto.createHash('sha256').update(data).digest('hex');\nconst ctEq = (aHex, bHex) => { try { const a = Buffer.from(String(aHex), 'hex'), b = Buffer.from(String(bHex), 'hex'); return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b); } catch (e) { return false; } };\nconst deviceKey = (dev) => RT.devKeys[dev] || (RT.devKeys[dev] = crypto.createHmac('sha256', RT.master).update('casa-iot/device/v1/' + dev).digest());\nconst sortedPairs = (o) => Object.keys(o || {}).sort().map((k) => [k, o[k]]);\nconst canon = (m, tags, f, ts) => JSON.stringify([m, sortedPairs(tags), sortedPairs(f), ts]);\n// ─────────────────────────────────────────────────────────────────────\n\n// ── Cabeceras de la API: CORS restringido al origen del frontend (generado) ─\nfunction apiHeaders(req) {\n  const h = { 'content-type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };\n  const origin = req && req.headers && req.headers.origin;\n  const allowed = String(env.get('CASA_ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173').split(',').map((x) => x.trim()).filter(Boolean);\n  if (origin && allowed.includes(origin)) { h['Access-Control-Allow-Origin'] = origin; h['Vary'] = 'Origin'; }   // sin origen permitido no se envía la cabecera: el navegador bloquea la respuesta\n  return h;\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// Entrada para un dispositivo EXTERNO (hoy solo el de prueba «sensor:PRUEBA-ingesta»; mañana, por ejemplo, un ESP32).\n//   POST /api/ingest   cuerpo: {\"dev\",\"body\",\"sig\"}  o  {\"msgs\":[{…}, …]}  (hasta ingestMaxMsgs)\n//   Está DESACTIVADA por defecto: se activa con CASA_INGEST=on y una CASA_DEVICE_KEY fija. Sin eso responde 404.\n// Cada mensaje pasa por el MISMO validador que la telemetría interna (firma, ventana, secuencia, esquema, anomalías).\n//   Salida 1 → validador   Salida 2 → respuesta HTTP de error\nconst L = SEC.limits;\nconst fail = (code, error) => { msg.statusCode = code; msg.payload = { error }; msg.headers = apiHeaders(msg.req); return [null, msg]; };\nif (!RT.ingestEnabled) return fail(404, 'ingesta deshabilitada');\nconst body = msg.payload;\nconst raw = JSON.stringify(body) || '';\nif (raw.length > L.ingestMaxBytes) return fail(413, 'mensaje demasiado grande');\nconst list = Array.isArray(body) ? body : body && typeof body === 'object' ? (Array.isArray(body.msgs) ? body.msgs : [body]) : null;\nif (!list || !list.length || list.length > L.ingestMaxMsgs) return fail(400, 'formato inválido');\nmsg._ingest = true;\nmsg.payload = list;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "crypto",
+        "module": "crypto"
+      }
+    ],
+    "x": 480,
+    "y": 1490,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_validar-telemetria"
+      ],
+      [
+        "casa_http_resp"
+      ]
+    ]
+  },
+  {
+    "id": "casa_http_health",
+    "type": "http in",
+    "name": "GET /api/health",
+    "url": "/api/health",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 1370,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_salud"
+      ]
+    ]
+  },
+  {
+    "id": "casa_salud",
+    "type": "function",
+    "name": "Estado del servicio",
+    "func": "// ── Cabeceras de la API: CORS restringido al origen del frontend (generado) ─\nfunction apiHeaders(req) {\n  const h = { 'content-type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };\n  const origin = req && req.headers && req.headers.origin;\n  const allowed = String(env.get('CASA_ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173').split(',').map((x) => x.trim()).filter(Boolean);\n  if (origin && allowed.includes(origin)) { h['Access-Control-Allow-Origin'] = origin; h['Vary'] = 'Origin'; }   // sin origen permitido no se envía la cabecera: el navegador bloquea la respuesta\n  return h;\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// GET /api/health  →  para comprobar rápido que Node-RED y la simulación están vivos.\nmsg.payload = { status: 'ok', simulation: !!flow.get('state'), time: Date.now() };\nmsg.statusCode = 200;\nmsg.headers = apiHeaders(msg.req);\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 480,
+    "y": 1370,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_http_resp"
+      ]
+    ]
+  },
+  {
+    "id": "casa_catch",
+    "type": "catch",
+    "name": "Errores de la API",
+    "scope": [
+      "casa_influx_in",
+      "casa_hist-power",
+      "casa_hist-smoke",
+      "casa_hist-clima"
+    ],
+    "uncaught": false,
+    "x": 160,
+    "y": 1430,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_error"
+      ]
+    ]
+  },
+  {
+    "id": "casa_error",
+    "type": "function",
+    "name": "Error → HTTP 502",
+    "func": "// ── Cabeceras de la API: CORS restringido al origen del frontend (generado) ─\nfunction apiHeaders(req) {\n  const h = { 'content-type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };\n  const origin = req && req.headers && req.headers.origin;\n  const allowed = String(env.get('CASA_ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173').split(',').map((x) => x.trim()).filter(Boolean);\n  if (origin && allowed.includes(origin)) { h['Access-Control-Allow-Origin'] = origin; h['Vary'] = 'Origin'; }   // sin origen permitido no se envía la cabecera: el navegador bloquea la respuesta\n  return h;\n}\n// ─────────────────────────────────────────────────────────────────────\n\n// Si InfluxDB no responde, la API contesta con un error claro en lugar de quedarse colgada.\n// El detalle técnico (dirección interna, puerto…) solo se devuelve si CASA_VERBOSE_ERRORS=on (desarrollo local):\n// en un servidor público ese texto revelaría la red interna.\nconst reason = (msg.error && msg.error.message) || 'InfluxDB no disponible';\nconst verbose = String(env.get('CASA_VERBOSE_ERRORS') || 'on').toLowerCase() !== 'off';\nmsg.statusCode = 502;\nmsg.payload = verbose ? { error: 'No se pudo consultar InfluxDB', detail: String(reason).slice(0, 200) } : { error: 'No se pudo consultar InfluxDB' };\nmsg.headers = apiHeaders(msg.req);\nconst S = flow.get('state');\nlet tel = null;\nif (S) {\n  const a = S.pipe.api, t = Date.now();\n  a.errors += 1; a.lastAt = t;\n  tel = { payload: { type: 'pipeline', ts: t, api: Object.assign({}, a) } };\n}\nreturn [msg, tel];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 480,
+    "y": 1430,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_http_resp"
+      ],
+      [
+        "casa_link_tel_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_c_FMonitor",
+    "type": "comment",
+    "name": "F · Monitor del pipeline — cada 5 s Node-RED LEE de InfluxDB cuánto guardó y cuándo fue lo último",
+    "info": "Así la interfaz puede demostrar que los datos están en la base de datos y no solo en memoria: puntos de los últimos 10 min, hora del último y latencia de la lectura.",
+    "x": 520,
+    "y": 1550,
+    "z": "tab_casa",
+    "wires": []
+  },
+  {
+    "id": "casa_inj_pipe",
+    "type": "inject",
+    "name": "Cada 5 s",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "5",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "4",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 1590,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_pipeline-contar"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pipeline-contar",
+    "type": "function",
+    "name": "Monitor · contar puntos en InfluxDB",
+    "func": "// Cada 5 s Node-RED LEE de InfluxDB (no de su memoria) cuántas lecturas de consumo hay en los últimos 10 min\n// y cuál es la más reciente. Así se demuestra que lo que envía se está guardando de verdad.\nconst cfg = global.get('cfg');\nif (!cfg) return null;\nconst B = (cfg.INFLUX || {}).bucket || 'casa_iot';\nmsg._t0 = Date.now();\nmsg.query = `from(bucket: \"${B}\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"watts\")\n  |> aggregateWindow(every: 1m, fn: count, createEmpty: false)\n  |> group()\n  |> sum()`;\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 430,
+    "y": 1590,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_pipe_in1"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pipe_in1",
+    "type": "influxdb in",
+    "name": "Monitor · contar (Flux)",
+    "influxdb": "cfg_influx_read",
+    "query": "",
+    "rawOutput": false,
+    "precision": "",
+    "retentionPolicy": "",
+    "org": "casa",
+    "x": 720,
+    "y": 1590,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_pipeline-ultimo"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pipeline-ultimo",
+    "type": "function",
+    "name": "Monitor · último dato guardado",
+    "func": "const cfg = global.get('cfg');\nif (!cfg) return null;\nconst B = (cfg.INFLUX || {}).bucket || 'casa_iot';\nconst rows = Array.isArray(msg.payload) ? msg.payload : [];\nmsg._points = rows.length ? Number(rows[0]._value) || 0 : 0;\nmsg.query = `from(bucket: \"${B}\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"watts\")\n  |> group()\n  |> max(column: \"_time\")`;\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1000,
+    "y": 1590,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_pipe_in2"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pipe_in2",
+    "type": "influxdb in",
+    "name": "Monitor · último (Flux)",
+    "influxdb": "cfg_influx_read",
+    "query": "",
+    "rawOutput": false,
+    "precision": "",
+    "retentionPolicy": "",
+    "org": "casa",
+    "x": 1290,
+    "y": 1590,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_pipeline-resultado"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pipeline-resultado",
+    "type": "function",
+    "name": "Monitor · resultado",
+    "func": "// Publica a la interfaz lo que InfluxDB confirmó: puntos guardados, hora del último y lo que tardó la lectura.\nconst S = flow.get('state');\nif (!S) return null;\nconst rows = Array.isArray(msg.payload) ? msg.payload : [];\nconst last = rows.length ? Date.parse(rows[0]._time) : NaN;\nconst now = Date.now();\nS.pipe.store = { ok: true, points10m: msg._points || 0, lastPointAt: Number.isFinite(last) ? last : null, readMs: now - msg._t0, checkedAt: now };\nnode.status({ fill: 'green', shape: 'dot', text: S.pipe.store.points10m + ' puntos · ' + S.pipe.store.readMs + ' ms' });\nreturn { payload: { type: 'pipeline', ts: now, store: S.pipe.store } };\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1290,
+    "y": 1660,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pipe_catch",
+    "type": "catch",
+    "name": "Errores de InfluxDB",
+    "scope": [
+      "casa_influx_batch",
+      "casa_influx_batch_int",
+      "casa_pipe_in1",
+      "casa_pipe_in2"
+    ],
+    "uncaught": false,
+    "x": 160,
+    "y": 1720,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_pipeline-error"
+      ]
+    ]
+  },
+  {
+    "id": "casa_pipeline-error",
+    "type": "function",
+    "name": "Monitor · error de InfluxDB",
+    "func": "// Si InfluxDB rechaza una escritura o una lectura, la interfaz lo muestra en rojo en el panel «Pipeline IoT».\nconst S = flow.get('state');\nif (!S) return null;\nconst src = msg.error && msg.error.source ? msg.error.source.id : '';\n// El texto del error llega a TODOS los clientes (también a los de solo lectura): en un servidor público puede revelar la red\n// interna (direcciones y puertos). Con CASA_VERBOSE_ERRORS=off se muestra un mensaje genérico; el detalle queda en el registro de Node-RED.\nconst verbose = String(env.get('CASA_VERBOSE_ERRORS') || 'on').toLowerCase() !== 'off';\nconst text = verbose ? String((msg.error && msg.error.message) || 'Error').slice(0, 160) : 'Error de InfluxDB (el detalle está en el registro de Node-RED)';\nconst now = Date.now();\nif (src.indexOf('casa_influx_batch') === 0) {   // lote principal, huellas de integridad\n  S.pipe.errors += 1; S.pipe.lastError = text; S.pipe.lastErrorAt = now;\n  return { payload: { type: 'pipeline', ts: now, writes: { batches: S.pipe.batches, points: S.pipe.points, lastBatchAt: S.pipe.lastBatchAt, errors: S.pipe.errors, lastError: text, lastErrorAt: now } } };\n}\nS.pipe.store = Object.assign({}, S.pipe.store, { ok: false, error: text, checkedAt: now });\nreturn { payload: { type: 'pipeline', ts: now, store: S.pipe.store } };\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 430,
+    "y": 1720,
+    "z": "tab_casa",
+    "wires": [
+      [
+        "casa_link_tel_out"
+      ]
+    ]
+  }
+]

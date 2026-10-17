@@ -1,0 +1,20 @@
+# Conexión de Grafana con InfluxDB.
+# El token NO está aquí: Grafana sustituye $INFLUX_TOKEN_READ por la variable de entorno del contenedor.
+# Es el token de SOLO LECTURA (no puede escribir ni borrar). Se crea con:  npm run seguridad:tokens
+# Conexión por la red interna de Docker (http://influxdb:8086), sin salir a internet: no hay certificado que
+# validar, así que NO se usa tlsSkipVerify. Si algún día apuntas a un InfluxDB con HTTPS, déjalo desactivado.
+apiVersion: 1
+datasources:
+  - name: InfluxDB casa_iot
+    uid: influx-casa-iot
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: $INFLUX_ORG
+      defaultBucket: $INFLUX_BUCKET
+      tlsSkipVerify: false
+    secureJsonData:
+      token: $INFLUX_TOKEN_READ

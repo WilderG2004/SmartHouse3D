@@ -1,0 +1,6 @@
+{
+  "name": "casa-iot-nodered-config",
+  "private": true,
+  "type": "commonjs",
+  "description": "Marca esta carpeta como CommonJS: Node-RED carga settings.js y seguridad-ws.js con require(); la raíz del proyecto es de tipo module (Vite)."
+}

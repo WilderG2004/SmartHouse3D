@@ -1,0 +1,122 @@
+# Casa IoT · gemelo digital — infraestructura LOCAL endurecida
+#
+#   1) npm run seguridad:secretos                      crea infra/.env con claves aleatorias (NO se sube a Git)
+#   2) docker compose -f infra/docker-compose.yml up -d influxdb
+#   3) npm run seguridad:tokens                        crea los 2 tokens de InfluxDB: uno solo escribe, otro solo lee
+#   4) docker compose -f infra/docker-compose.yml up -d --build
+#
+#   Node-RED  http://localhost:1880   WebSocket /ws/casa-iot · API /api/…  (el editor pide usuario y contraseña)
+#   InfluxDB  http://localhost:8086
+#   Grafana   http://localhost:3000   (usuario admin · contraseña = GRAFANA_ADMIN_PASSWORD de infra/.env)
+#
+# Qué cambió respecto de la versión de práctica y por qué (riesgo R2: exposición y almacenamiento inseguro de credenciales):
+#   - Ningún secreto está escrito aquí: todo sale de infra/.env mediante variables de entorno. Si falta uno, Docker se detiene con un mensaje.
+#   - Los puertos se publican SOLO en 127.0.0.1 (tu equipo). Para internet usa infra/despliegue/ (solo el proxy abre 80 y 443).
+#   - Imágenes con versión fija, nunca :latest (InfluxDB 2.x con Flux; «latest» pasó a ser otra versión mayor, 3.x, que no es compatible).
+#   - Grafana sin acceso anónimo y sin tlsSkipVerify; sin registro de usuarios.
+#   - Node-RED: editor protegido (adminAuth), flows_cred.json cifrado, tokens de InfluxDB separados.
+#   - Contenedores sin privilegios nuevos y sin capacidades de Linux que no necesitan.
+#
+# Este archivo NO se pudo probar con Docker en el entorno donde se escribió (no había demonio de Docker).
+# Revísalo con:  docker compose -f infra/docker-compose.yml config   y prueba el arranque en tu equipo.
+name: casa-iot
+
+x-endurecido: &endurecido
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
+services:
+  influxdb:
+    <<: *endurecido
+    # 2.7 = línea 2.x (Flux). Para producción fija también el patch o el digest:  influxdb:2.7.<n>@sha256:<resumen>
+    image: influxdb:2.7
+    container_name: casa-influxdb
+    ports: ["127.0.0.1:8086:8086"]
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_ADMIN_USER:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: "${INFLUX_ADMIN_PASSWORD:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-casa}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-casa_iot}
+      DOCKER_INFLUXDB_INIT_RETENTION: 30d
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "${INFLUX_ADMIN_TOKEN:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  nodered:
+    <<: *endurecido
+    build: ./nodered
+    container_name: casa-nodered
+    ports: ["127.0.0.1:1880:1880"]
+    environment:
+      TZ: ${TZ:-America/Bogota} # la simulación usa la hora del equipo (ciclo día/noche)
+      # Dentro del contenedor escucha en todas las interfaces; hacia fuera solo se publica 127.0.0.1 (ver «ports»)
+      NODERED_BIND: 0.0.0.0
+      # Editor de Node-RED: usuario + hash bcrypt (la contraseña en claro no se guarda en ningún sitio)
+      NODERED_ADMIN_USER: ${NODERED_ADMIN_USER:-admin}
+      NODERED_ADMIN_HASH: "${NODERED_ADMIN_HASH:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+      NODERED_CREDENTIAL_SECRET: "${NODERED_CREDENTIAL_SECRET:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+      # InfluxDB: dos tokens con un solo permiso cada uno
+      INFLUX_TOKEN_WRITE: "${INFLUX_TOKEN_WRITE:?Faltan los tokens de InfluxDB: ejecuta  npm run seguridad:tokens}"
+      INFLUX_TOKEN_READ: "${INFLUX_TOKEN_READ:?Faltan los tokens de InfluxDB: ejecuta  npm run seguridad:tokens}"
+      # Claves de la sesión y de los dispositivos (ver .env.example para qué es cada una)
+      CASA_PAIRING_KEY: "${CASA_PAIRING_KEY:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+      CASA_ADMIN_KEY: "${CASA_ADMIN_KEY:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+      CASA_DEVICE_KEY: "${CASA_DEVICE_KEY:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+      CASA_PAIRING_KEY_PREVIOUS: ${CASA_PAIRING_KEY_PREVIOUS:-}
+      CASA_ADMIN_KEY_PREVIOUS: ${CASA_ADMIN_KEY_PREVIOUS:-}
+      CASA_INGEST: ${CASA_INGEST:-off}
+      CASA_ALLOWED_ORIGINS: ${CASA_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4173}
+      CASA_VERBOSE_ERRORS: ${CASA_VERBOSE_ERRORS:-on}
+    volumes:
+      - nodered-data:/data
+      # El flujo se monta desde el repo: lo que guardes en el editor queda en infra/nodered/flows.json
+      - ./nodered/flows.json:/data/flows.json
+      # flows_cred.json solo trae referencias a variables, no secretos; en solo lectura para que Node-RED no lo reescriba
+      - ./nodered/flows_cred.json:/data/flows_cred.json:ro
+      - ./nodered/settings.js:/data/settings.js:ro
+      - ./nodered/seguridad-ws.js:/data/seguridad-ws.js:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  grafana:
+    <<: *endurecido
+    image: grafana/grafana:11.6.1
+    container_name: casa-grafana
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?Falta infra/.env: ejecuta  npm run seguridad:secretos}"
+      GF_AUTH_ANONYMOUS_ENABLED: "false" # sin acceso anónimo: hay que iniciar sesión
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ALLOW_EMBEDDING: ${GRAFANA_ALLOW_EMBEDDING:-false} # true solo si incrustas el panel en otra página (ver infra/README.md)
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_USERS_DEFAULT_THEME: dark
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/casa-iot-seguridad.json
+      # El datasource (provisioning) lee estas variables: token de SOLO lectura
+      INFLUX_TOKEN_READ: "${INFLUX_TOKEN_READ:?Faltan los tokens de InfluxDB: ejecuta  npm run seguridad:tokens}"
+      INFLUX_ORG: ${INFLUX_ORG:-casa}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-casa_iot}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+  nodered-data:
+  grafana-data:

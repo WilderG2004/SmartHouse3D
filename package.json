@@ -1,0 +1,44 @@
+{
+  "name": "casa-iot-twin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "nodered:build": "npx tsx infra/nodered/tools/build-flows.mts",
+    "setup:local": "node infra/setup-local.mjs",
+    "flow:redeploy": "node infra/redeploy-flow.mjs",
+    "nodered:iniciar": "node infra/iniciar-nodered.mjs",
+    "seguridad:secretos": "node infra/generar-secretos.mjs",
+    "seguridad:tokens": "node infra/crear-tokens-influx.mjs",
+    "seguridad:probar": "node infra/pruebas-seguridad.mjs",
+    "seguridad:integridad": "node infra/verificar-integridad.mjs",
+    "seguridad:vercel": "node infra/despliegue/generar-vercel-json.mjs",
+    "influx:simulado": "node infra/pruebas/influx-simulado.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "lucide-react": "^1.50.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1",
+    "three": "^0.186.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "bcryptjs": "^2.4.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "ws": "^8.22.0"
+  }
+}

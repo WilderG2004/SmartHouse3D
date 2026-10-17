@@ -1,0 +1,8 @@
+{
+  "cfg_influx": {
+    "token": "${INFLUX_TOKEN_WRITE}"
+  },
+  "cfg_influx_read": {
+    "token": "${INFLUX_TOKEN_READ}"
+  }
+}

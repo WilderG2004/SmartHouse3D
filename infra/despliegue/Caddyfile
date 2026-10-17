@@ -1,0 +1,58 @@
+# Proxy inverso de Casa IoT (Caddy 2). Es lo ÚNICO que abre puertos hacia internet (80 y 443).
+#
+# Qué resuelve:
+#   - TLS: Caddy pide y renueva solo el certificado de Let's Encrypt de {$DOMINIO}. Eso da  https://  y  wss://
+#     (una página en https NO puede abrir un WebSocket ws://: el navegador lo bloquea por «contenido mixto»).
+#   - Superficie mínima: solo se publican /ws/casa-iot y /api/*. El editor de Node-RED, /flows, /context, /auth, /settings…
+#     responden 404 desde fuera aunque estuvieran activos dentro.
+#   - InfluxDB, Grafana y Node-RED NO publican puertos: viven en una red interna de Docker que solo ve el proxy.
+#
+# Variables (en infra/.env o el entorno del servidor):  DOMINIO (p. ej. casa-api.midominio.com) · ACME_EMAIL
+#
+# LÍMITES HONESTOS
+#   - Caddy no trae limitación de frecuencia por IP (requiere el plugin caddy-ratelimit, que obliga a compilar Caddy a
+#     medida). Aquí ese freno lo da (a) el control de handshake de Node-RED (infra/nodered/seguridad-ws.js: conexiones
+#     simultáneas e intentos por minuto por IP) y (b) la alternativa nginx de esta carpeta, que sí trae limit_req/limit_conn.
+#   - Caddy reescribe X-Forwarded-For con la IP real del cliente (ignora la que el cliente intente mandar), por eso
+#     Node-RED arranca con CASA_TRUST_PROXY=on: sin proxy delante NO actives esa variable (un cliente podría falsear su IP).
+#   - Este archivo no se pudo probar con un Caddy real en el entorno donde se escribió. Valídalo con:
+#       docker run --rm -v $PWD/infra/despliegue/Caddyfile:/etc/caddy/Caddyfile caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# WebSocket de la casa. Caddy detecta el «Upgrade» y lo deja pasar tal cual.
+	@ws path /ws/casa-iot
+	handle @ws {
+		reverse_proxy nodered:1880
+	}
+
+	# API REST (/api/health, /api/history/*, /api/ingest). Cuerpos pequeños: la ingesta firmada pesa < 8 KB.
+	handle /api/* {
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy nodered:1880
+	}
+
+	# Todo lo demás no existe desde fuera (editor, administración, contexto…)
+	handle {
+		respond "No encontrado" 404
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

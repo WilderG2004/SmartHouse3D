@@ -1,0 +1,215 @@
+@import "tailwindcss";
+
+/*
+ * Sistema de diseno de la interfaz (tema claro y tranquilo).
+ *
+ * Reglas que sigue la paleta:
+ *  - 60 / 30 / 10: 60 % fondos neutros (canvas y panel), 30 % texto y bordes suaves, 10 % color de marca y avisos.
+ *  - Un solo color de marca (verde azulado) para todo lo que se puede pulsar o esta "activo".
+ *  - Los colores de aviso tienen significado fijo: ambar = energia / luz / precaucion, azul = frio / presencia,
+ *    verde = todo bien, rojo = peligro. Nunca se usan para decorar.
+ *  - Cada color tiene 3 tonos: base (rellenos, iconos), strong (TEXTO sobre fondo claro, contraste >= 4.5:1) y soft (fondo suave).
+ *  - Texto principal sobre blanco: contraste ~14:1. Texto secundario: ~5.6:1 (cumple AA).
+ */
+@theme {
+  --font-sans: "Inter", "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+
+  /* Tamanos de letra: un poco mas grandes que los de Tailwind por defecto, para leer sin esfuerzo */
+  --text-xs: 0.8125rem; /* 13 px */
+  --text-xs--line-height: 1.2rem;
+  --text-sm: 0.9375rem; /* 15 px */
+  --text-sm--line-height: 1.4rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.55rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.6rem;
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: 1.75rem;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 2.25rem;
+
+  /* Superficies */
+  --color-canvas: #f2f5f3; /* fondo de la pagina */
+  --color-panel: #ffffff; /* tarjetas */
+  --color-raised: #eaf0ed; /* fondos suaves: seleccion, hover, controles */
+  --color-line: #dbe3df; /* bordes */
+
+  /* Texto */
+  --color-fg: #17302c;
+  --color-mute: #587069;
+
+  /* Marca */
+  --color-brand: #0f766e;
+  --color-brand-strong: #0b5f58;
+  --color-brand-soft: #d6efea;
+
+  /* Energia, luz, precaucion */
+  --color-warm: #f4a21d;
+  --color-warm-strong: #a65a06;
+  --color-warm-soft: #fdf1d8;
+
+  /* Frio, aire acondicionado, presencia */
+  --color-cool: #2b9bd6;
+  --color-cool-strong: #07679a;
+  --color-cool-soft: #e0f1fb;
+
+  /* Todo bien, enchufes encendidos */
+  --color-ok: #2fa56f;
+  --color-ok-strong: #17724a;
+  --color-ok-soft: #dcf4e7;
+
+  /* Peligro */
+  --color-bad: #d9382c;
+  --color-bad-strong: #a8231a;
+  --color-bad-soft: #fde4e1;
+
+  --shadow-card: 0 1px 2px rgb(23 48 44 / 0.05), 0 6px 18px rgb(23 48 44 / 0.06);
+  --shadow-float: 0 2px 4px rgb(23 48 44 / 0.08), 0 10px 28px rgb(23 48 44 / 0.14);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Scrollbars discretas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #b8c7c1 transparent;
+}
+
+/* Controles bloqueados (sesión de solo lectura o sin el rol necesario) */
+fieldset:disabled {
+  opacity: 0.55;
+}
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+}
+
+/* Foco visible para teclado */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* Tarjeta base: todas las cajas de contenido se ven iguales */
+  .card {
+    background: var(--color-panel);
+    border: 1px solid var(--color-line);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Cristal claro para lo que flota sobre la vista 3D */
+  .glass {
+    background: rgb(255 255 255 / 0.88);
+    border: 1px solid rgb(219 227 223 / 0.9);
+    box-shadow: var(--shadow-float);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  /* Etiquetas flotantes dentro de la escena 3D */
+  .tag3d {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    border-radius: 999px;
+    padding: 0.28rem 0.6rem;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--color-fg);
+    background: rgb(255 255 255 / 0.94);
+    border: 1px solid rgb(219 227 223 / 0.95);
+    box-shadow: 0 1px 2px rgb(23 48 44 / 0.12), 0 4px 12px rgb(23 48 44 / 0.12);
+  }
+}
+
+/* Recorrido en primera persona: los paneles pierden el desenfoque de vidrio. Con el 3D cambiando en cada cuadro,
+   la tarjeta grafica tendria que recalcular ese desenfoque 60 veces por segundo (y casi no se nota: el panel ya es 88 % blanco). */
+[data-walking='true'] .glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgb(255 255 255 / 0.95);
+}
+
+/* Slider (dimmer, hora, brillo) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-line);
+  width: 100%;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgb(23 48 44 / 0.4);
+}
+input[type="range"]::-moz-range-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgb(23 48 44 / 0.4);
+}
+input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Selector de color redondo */
+input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--color-line), 0 1px 3px rgb(23 48 44 / 0.2);
+}
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
+
+select {
+  cursor: pointer;
+}
+
+@keyframes alarm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(217 56 44 / 0.5); }
+  50% { box-shadow: 0 0 0 10px rgb(217 56 44 / 0); }
+}
+.alarm-pulse { animation: alarm-pulse 1s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .alarm-pulse, .animate-pulse { animation: none !important; }
+}

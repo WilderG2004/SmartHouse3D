@@ -1,0 +1,164 @@
+# Casa IoT · despliegue PÚBLICO (frontend en Vercel, backend en tu servidor)
+#
+#   Internet ──443/80──▶ proxy (Caddy) ──red «backend», interna──▶ Node-RED ──▶ InfluxDB
+#                                                                      └──────▶ (Grafana solo por túnel SSH)
+#
+# Reglas de este archivo (riesgo R2: exposición de servicios):
+#   - Solo el proxy publica puertos (80 y 443). Node-RED, InfluxDB y Grafana NO publican ninguno.
+#   - Red «backend» con  internal: true : sus contenedores no tienen salida a internet ni son alcanzables desde fuera.
+#     Solo el proxy toca la red «edge» (la necesita para pedir el certificado a Let's Encrypt).
+#   - El editor de Node-RED queda APAGADO: aquí no se le pasa NODERED_ADMIN_HASH (ver settings.js, falla cerrado).
+#     Para cambiar el flujo: edítalo en el repositorio y vuelve a desplegar.
+#   - CASA_VERBOSE_ERRORS=off (los errores no revelan detalles internos), CASA_WS_REQUIRE_ORIGIN=on, CASA_TRUST_PROXY=on.
+#   - Límites de memoria y de procesos: un mensaje WebSocket enorme no tumba el servidor entero.
+#   - Imágenes con versión fija; contenedores sin capacidades extra.
+#
+# Uso (en el servidor, con infra/.env ya generado y los DOS pasos de tokens hechos, ver infra/despliegue/README.md):
+#     docker compose -f infra/despliegue/docker-compose.prod.yml up -d --build
+#
+# NO se pudo probar con Docker en el entorno donde se escribió. Valida la sintaxis con:
+#     docker compose -f infra/despliegue/docker-compose.prod.yml config
+name: casa-iot-prod
+
+x-endurecido: &endurecido
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+
+services:
+  proxy:
+    <<: *endurecido
+    image: caddy:2.10-alpine
+    container_name: casa-proxy
+    cap_add: [NET_BIND_SERVICE] # para escuchar en 80/443 sin ser root completo
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      DOMINIO: "${DOMINIO:?Define DOMINIO en infra/.env (el nombre público de tu backend)}"
+      ACME_EMAIL: "${ACME_EMAIL:?Define ACME_EMAIL en infra/.env (aviso de caducidad de Let's Encrypt)}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certificados: consérvalo para no pedirlos de nuevo en cada arranque
+      - caddy-config:/config
+    networks: [edge, backend]
+    depends_on: [nodered]
+
+  nodered:
+    <<: *endurecido
+    build: ../nodered
+    container_name: casa-nodered
+    # SIN «ports»: solo el proxy lo alcanza por la red interna
+    environment:
+      TZ: ${TZ:-America/Bogota}
+      NODERED_BIND: 0.0.0.0
+      # NODERED_ADMIN_HASH a propósito NO se pasa: el editor y la API de administración quedan apagados
+      NODERED_CREDENTIAL_SECRET: "${NODERED_CREDENTIAL_SECRET:?Falta infra/.env (npm run seguridad:secretos)}"
+      INFLUX_TOKEN_WRITE: "${INFLUX_TOKEN_WRITE:?Faltan los tokens de InfluxDB (paso 2 de infra/despliegue/README.md)}"
+      INFLUX_TOKEN_READ: "${INFLUX_TOKEN_READ:?Faltan los tokens de InfluxDB (paso 2 de infra/despliegue/README.md)}"
+      CASA_PAIRING_KEY: "${CASA_PAIRING_KEY:?Falta infra/.env (npm run seguridad:secretos)}"
+      CASA_ADMIN_KEY: "${CASA_ADMIN_KEY:?Falta infra/.env (npm run seguridad:secretos)}"
+      CASA_DEVICE_KEY: "${CASA_DEVICE_KEY:?Falta infra/.env (npm run seguridad:secretos)}"
+      CASA_PAIRING_KEY_PREVIOUS: ${CASA_PAIRING_KEY_PREVIOUS:-}
+      CASA_ADMIN_KEY_PREVIOUS: ${CASA_ADMIN_KEY_PREVIOUS:-}
+      CASA_INGEST: ${CASA_INGEST:-off}
+      # En producción: SOLO el origen de tu frontend en Vercel, p. ej. https://casa-iot.vercel.app
+      CASA_ALLOWED_ORIGINS: "${FRONTEND_ORIGIN:?Define FRONTEND_ORIGIN en infra/.env (p. ej. https://casa-iot.vercel.app)}"
+      CASA_WS_REQUIRE_ORIGIN: "on"
+      CASA_TRUST_PROXY: "on" # hay un proxy delante que escribe X-Forwarded-For; sin proxy, NO lo actives
+      CASA_VERBOSE_ERRORS: "off"
+    volumes:
+      - nodered-data:/data
+      # En solo lectura: lo que está desplegado es exactamente lo que hay en el repositorio
+      - ../nodered/flows.json:/data/flows.json:ro
+      - ../nodered/flows_cred.json:/data/flows_cred.json:ro
+      - ../nodered/settings.js:/data/settings.js:ro
+      - ../nodered/seguridad-ws.js:/data/seguridad-ws.js:ro
+    networks: [backend]
+    mem_limit: 512m
+    pids_limit: 200
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  influxdb:
+    <<: *endurecido
+    image: influxdb:2.7
+    container_name: casa-influxdb
+    # SIN «ports»
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_ADMIN_USER:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: "${INFLUX_ADMIN_PASSWORD:?Falta infra/.env (npm run seguridad:secretos)}"
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-casa}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-casa_iot}
+      DOCKER_INFLUXDB_INIT_RETENTION: 30d
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "${INFLUX_ADMIN_TOKEN:?Falta infra/.env (npm run seguridad:secretos)}"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    networks: [backend]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  grafana:
+    <<: *endurecido
+    image: grafana/grafana:11.6.1
+    container_name: casa-grafana
+    # SIN «ports» ni ruta en el proxy: se mira por túnel SSH (ver README.md de esta carpeta)
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?Falta infra/.env (npm run seguridad:secretos)}"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ALLOW_EMBEDDING: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_USERS_DEFAULT_THEME: dark
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/casa-iot-seguridad.json
+      INFLUX_TOKEN_READ: "${INFLUX_TOKEN_READ:?Faltan los tokens de InfluxDB (paso 2 de infra/despliegue/README.md)}"
+      INFLUX_ORG: ${INFLUX_ORG:-casa}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-casa_iot}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [backend]
+    mem_limit: 512m
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  # Caja de herramientas de administración (no arranca sola): crea los tokens de InfluxDB y verifica la integridad
+  # desde DENTRO de la red interna, sin abrir ningún puerto.
+  #   docker compose -f infra/despliegue/docker-compose.prod.yml --profile admin run --rm herramientas \
+  #       node infra/crear-tokens-influx.mjs --influx-url http://influxdb:8086
+  herramientas:
+    profiles: ["admin"]
+    image: node:22-alpine
+    working_dir: /app
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ../..:/app # el repo (necesita escribir infra/.env al crear los tokens)
+    networks: [backend]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+volumes:
+  caddy-data:
+  caddy-config:
+  influxdb-data:
+  influxdb-config:
+  nodered-data:
+  grafana-data:

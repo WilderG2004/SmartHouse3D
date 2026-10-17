@@ -1,0 +1,440 @@
+{
+  "fecha": "2026-10-16T19:34:30.357Z",
+  "nodered": "http://localhost:1880",
+  "node": "v22.22.0",
+  "ws": "ws",
+  "resultados": [
+    {
+      "id": "A1",
+      "group": "ordenes",
+      "title": "Orden de luz desde una sesión de solo lectura",
+      "expected": "rechazo «forbidden»",
+      "got": "rechazo «forbidden»",
+      "status": "OK",
+      "evidence": "audit: result=rejected, reason=forbidden, role=lector"
+    },
+    {
+      "id": "A2",
+      "group": "ordenes",
+      "title": "Armar/desarmar la alarma sin permiso",
+      "expected": "rechazo «forbidden»",
+      "got": "rechazo «forbidden»",
+      "status": "OK",
+      "evidence": "audit: kind=security.set, reason=forbidden"
+    },
+    {
+      "id": "A3",
+      "group": "ordenes",
+      "title": "Tipo interno (security.trigger) enviado desde fuera",
+      "expected": "rechazo «unknown_kind»",
+      "got": "rechazo «unknown_kind»",
+      "status": "OK",
+      "evidence": "audit: reason=unknown_kind"
+    },
+    {
+      "id": "A4",
+      "group": "ordenes",
+      "title": "Mensaje que no es JSON",
+      "expected": "rechazo «no_json»",
+      "got": "rechazo «no_json»",
+      "status": "OK",
+      "evidence": "audit: reason=no_json"
+    },
+    {
+      "id": "A5",
+      "group": "ordenes",
+      "title": "Mensaje demasiado grande (4 KB)",
+      "expected": "rechazo «too_large»",
+      "got": "rechazo «too_large»",
+      "status": "OK",
+      "evidence": "audit: reason=too_large"
+    },
+    {
+      "id": "A6",
+      "group": "ordenes",
+      "title": "JSON sin «kind»",
+      "expected": "rechazo «schema»",
+      "got": "rechazo «schema»",
+      "status": "OK",
+      "evidence": "audit: reason=schema"
+    },
+    {
+      "id": "A7",
+      "group": "ordenes",
+      "title": "Inundación: 120 mensajes en un instante desde una sesión de lectura",
+      "expected": "se atienden pocos (límite por sesión), el resto se descarta",
+      "got": "10 atendidos de 120 · rechazos silenciosos: 0",
+      "status": "OK",
+      "evidence": "audit: reason=rate_limit (con tope por segundo) y un aviso en el log de eventos"
+    },
+    {
+      "id": "A8",
+      "group": "ordenes",
+      "title": "Clave de emparejamiento incorrecta",
+      "expected": "rechazo «bad_key»",
+      "got": "rechazo «bad_key»",
+      "status": "OK",
+      "evidence": "audit: reason=bad_key"
+    },
+    {
+      "id": "A9",
+      "group": "ordenes",
+      "title": "Bloqueo tras 5 intentos fallidos (con la clave correcta al sexto)",
+      "expected": "rechazo «locked»",
+      "got": "rechazo «locked»",
+      "status": "OK",
+      "evidence": "audit: reason=locked · aviso en el log de eventos"
+    },
+    {
+      "id": "A0",
+      "group": "ordenes",
+      "title": "Control positivo: emparejar con la clave de Operador",
+      "expected": "sesión «operador»",
+      "got": "session operador",
+      "status": "OK",
+      "evidence": "audit: reason=paired"
+    },
+    {
+      "id": "A10a",
+      "group": "ordenes",
+      "title": "Intensidad 150 (rango 0-100)",
+      "expected": "rechazo «range»",
+      "got": "rechazo «range»",
+      "status": "OK",
+      "evidence": "audit: reason=range"
+    },
+    {
+      "id": "A10b",
+      "group": "ordenes",
+      "title": "Consigna del aire en 40 °C (rango 16-30)",
+      "expected": "rechazo «range»",
+      "got": "rechazo «range»",
+      "status": "OK",
+      "evidence": "audit: reason=range"
+    },
+    {
+      "id": "A10c",
+      "group": "ordenes",
+      "title": "Color que no es hexadecimal",
+      "expected": "rechazo «range»",
+      "got": "rechazo «range»",
+      "status": "OK",
+      "evidence": "audit: reason=range"
+    },
+    {
+      "id": "A10d",
+      "group": "ordenes",
+      "title": "Tipo equivocado: «on» como texto",
+      "expected": "rechazo «schema»",
+      "got": "rechazo «schema»",
+      "status": "OK",
+      "evidence": "audit: reason=schema"
+    },
+    {
+      "id": "A11",
+      "group": "ordenes",
+      "title": "Dispositivo inexistente",
+      "expected": "rechazo «unknown_id»",
+      "got": "rechazo «unknown_id»",
+      "status": "OK",
+      "evidence": "audit: reason=unknown_id"
+    },
+    {
+      "id": "A12a",
+      "group": "ordenes",
+      "title": "Campo interno «auto» colado en la orden",
+      "expected": "rechazo «schema»",
+      "got": "rechazo «schema»",
+      "status": "OK",
+      "evidence": "audit: reason=schema"
+    },
+    {
+      "id": "A12b",
+      "group": "ordenes",
+      "title": "Contaminación de prototipo («__proto__»)",
+      "expected": "rechazo «schema»",
+      "got": "rechazo «schema»",
+      "status": "OK",
+      "evidence": "audit: reason=schema"
+    },
+    {
+      "id": "A13",
+      "group": "ordenes",
+      "title": "Operador intenta cambiar la hora simulada (solo Administrador)",
+      "expected": "rechazo «forbidden»",
+      "got": "rechazo «forbidden»",
+      "status": "OK",
+      "evidence": "audit: reason=forbidden, role=operador"
+    },
+    {
+      "id": "A14a",
+      "group": "ordenes",
+      "title": "Desarmar la alarma pide confirmación (no se ejecuta)",
+      "expected": "respuesta «confirm» con código de un solo uso",
+      "got": "confirm",
+      "status": "OK",
+      "evidence": "audit: result=pending, reason=confirm_required"
+    },
+    {
+      "id": "A14b",
+      "group": "ordenes",
+      "title": "Usar el código de OTRA sesión",
+      "expected": "rechazo «bad_confirm»",
+      "got": "rechazo «bad_confirm»",
+      "status": "OK",
+      "evidence": "audit: reason=bad_confirm"
+    },
+    {
+      "id": "A14c",
+      "group": "ordenes",
+      "title": "Confirmar con el código correcto (control positivo)",
+      "expected": "se ejecuta: llega el estado «disarmed»",
+      "got": "ejecutada",
+      "status": "OK",
+      "evidence": "audit: reason=confirmed, confirmed=true · evento «Desarmada»"
+    },
+    {
+      "id": "A14d",
+      "group": "ordenes",
+      "title": "Reutilizar el mismo código (repetición)",
+      "expected": "rechazo «bad_confirm»",
+      "got": "rechazo «bad_confirm»",
+      "status": "OK",
+      "evidence": "audit: reason=bad_confirm"
+    },
+    {
+      "id": "A14e",
+      "group": "ordenes",
+      "title": "Código caducado (más de 15 s)",
+      "expected": "rechazo «expired»",
+      "got": "rechazo «expired»",
+      "status": "OK",
+      "evidence": "audit: reason=expired"
+    },
+    {
+      "id": "A15a",
+      "group": "ordenes",
+      "title": "admin.revoke baja a las demás sesiones a «lector»",
+      "expected": "la otra sesión recibe role=lector, revoked=true",
+      "got": "role=lector",
+      "status": "OK",
+      "evidence": "audit: reason=revoked · aviso en el log de eventos"
+    },
+    {
+      "id": "A15b",
+      "group": "ordenes",
+      "title": "La sesión revocada ya no puede mandar órdenes",
+      "expected": "rechazo «forbidden»",
+      "got": "rechazo «forbidden»",
+      "status": "OK",
+      "evidence": "audit: reason=forbidden, role=lector"
+    },
+    {
+      "id": "A15c",
+      "group": "ordenes",
+      "title": "El emparejamiento queda congelado (nueva sesión con clave correcta)",
+      "expected": "rechazo «frozen»",
+      "got": "rechazo «frozen»",
+      "status": "OK",
+      "evidence": "audit: reason=frozen"
+    },
+    {
+      "id": "B1",
+      "group": "telemetria",
+      "title": "Control positivo: mensaje firmado y válido",
+      "expected": "HTTP 202, aceptado",
+      "got": "HTTP 202 · aceptados 1",
+      "status": "OK",
+      "evidence": "InfluxDB: env, room=prueba, via=ingest"
+    },
+    {
+      "id": "B2a",
+      "group": "telemetria",
+      "title": "Firma inválida (un carácter alterado)",
+      "expected": "rechazo «bad_signature»",
+      "got": "rechazo «bad_signature»",
+      "status": "OK",
+      "evidence": "audit: reason=bad_signature, kind=telemetry · aviso crítico en el log"
+    },
+    {
+      "id": "B2b",
+      "group": "telemetria",
+      "title": "Firmado con OTRA clave (no conoce CASA_DEVICE_KEY)",
+      "expected": "rechazo «bad_signature»",
+      "got": "rechazo «bad_signature»",
+      "status": "OK",
+      "evidence": "audit: reason=bad_signature"
+    },
+    {
+      "id": "B2c",
+      "group": "telemetria",
+      "title": "Cuerpo alterado después de firmar (24 → 29 °C)",
+      "expected": "rechazo «bad_signature»",
+      "got": "rechazo «bad_signature»",
+      "status": "OK",
+      "evidence": "audit: reason=bad_signature"
+    },
+    {
+      "id": "B3",
+      "group": "telemetria",
+      "title": "Mensaje repetido (replay): se reenvía el mismo mensaje válido",
+      "expected": "primero aceptado, el repetido «replay»",
+      "got": "1.º HTTP 202 · repetido «replay»",
+      "status": "OK",
+      "evidence": "audit: reason=replay · aviso crítico en el log"
+    },
+    {
+      "id": "B3b",
+      "group": "telemetria",
+      "title": "Número de secuencia anterior (mensaje viejo reenviado después)",
+      "expected": "rechazo «replay»",
+      "got": "rechazo «replay»",
+      "status": "OK",
+      "evidence": "audit: reason=replay"
+    },
+    {
+      "id": "B4",
+      "group": "telemetria",
+      "title": "Marca de tiempo de hace 2 minutos (bien firmada)",
+      "expected": "rechazo «stale»",
+      "got": "rechazo «stale»",
+      "status": "OK",
+      "evidence": "audit: reason=stale"
+    },
+    {
+      "id": "B5a",
+      "group": "telemetria",
+      "title": "Temperatura 400 °C (rango −30…70)",
+      "expected": "rechazo «range»",
+      "got": "rechazo «range»",
+      "status": "OK",
+      "evidence": "audit: reason=range"
+    },
+    {
+      "id": "B5b",
+      "group": "telemetria",
+      "title": "Humedad −5 % (rango 0…100)",
+      "expected": "rechazo «range»",
+      "got": "rechazo «range»",
+      "status": "OK",
+      "evidence": "audit: reason=range"
+    },
+    {
+      "id": "B5c",
+      "group": "telemetria",
+      "title": "Temperatura como texto",
+      "expected": "rechazo «schema»",
+      "got": "rechazo «schema»",
+      "status": "OK",
+      "evidence": "audit: reason=schema"
+    },
+    {
+      "id": "B6",
+      "group": "telemetria",
+      "title": "Dispositivo inexistente (bien firmado con su clave derivada)",
+      "expected": "rechazo «unknown_device»",
+      "got": "rechazo «unknown_device»",
+      "status": "OK",
+      "evidence": "audit: reason=unknown_device"
+    },
+    {
+      "id": "B7",
+      "group": "telemetria",
+      "title": "Dispositivo real del sistema pero SIN permiso de ingesta (suplantación)",
+      "expected": "rechazo «unknown_device»",
+      "got": "rechazo «unknown_device»",
+      "status": "OK",
+      "evidence": "audit: reason=unknown_device"
+    },
+    {
+      "id": "B9",
+      "group": "telemetria",
+      "title": "Campo no permitido («rm_rf»)",
+      "expected": "rechazo «schema»",
+      "got": "rechazo «schema»",
+      "status": "OK",
+      "evidence": "audit: reason=schema"
+    },
+    {
+      "id": "B9b",
+      "group": "telemetria",
+      "title": "Etiquetas que no corresponden al dispositivo (room=sala_principal)",
+      "expected": "rechazo «schema»",
+      "got": "rechazo «schema»",
+      "status": "OK",
+      "evidence": "audit: reason=schema"
+    },
+    {
+      "id": "B8",
+      "group": "telemetria",
+      "title": "Salto físicamente imposible: 25 °C → 60 °C en 0,3 s",
+      "expected": "la 1.ª se acepta; la 2.ª «anomaly» (cuarentena)",
+      "got": "1.ª HTTP 202 · 2.ª «anomaly»",
+      "status": "OK",
+      "evidence": "InfluxDB: quarantine (dev, reason=anomaly) + audit + aviso crítico; NO entra en «env»"
+    },
+    {
+      "id": "B10",
+      "group": "telemetria",
+      "title": "Cuerpo sin la forma esperada",
+      "expected": "rechazo (rechazado por el validador)",
+      "got": "HTTP 422",
+      "status": "OK",
+      "evidence": "audit: reason=envelope"
+    },
+    {
+      "id": "B11",
+      "group": "telemetria",
+      "title": "Petición con 30 mensajes (tope: 20 mensajes y 8 KB)",
+      "expected": "HTTP 400 o 413",
+      "got": "HTTP 413",
+      "status": "OK",
+      "evidence": "sin registro (se corta antes de validar)"
+    },
+    {
+      "id": "C1",
+      "group": "config",
+      "title": "GET /api/health responde y no revela detalles internos",
+      "expected": "200 con {status, simulation, time}",
+      "got": "HTTP 200",
+      "status": "OK",
+      "evidence": ""
+    },
+    {
+      "id": "C2",
+      "group": "config",
+      "title": "CORS: un origen no permitido no recibe Access-Control-Allow-Origin",
+      "expected": "sin cabecera",
+      "got": "sin cabecera",
+      "status": "OK",
+      "evidence": ""
+    },
+    {
+      "id": "C3",
+      "group": "config",
+      "title": "Inyección en el parámetro room de la consulta Flux",
+      "expected": "HTTP 400",
+      "got": "HTTP 400",
+      "status": "OK",
+      "evidence": ""
+    },
+    {
+      "id": "C4",
+      "group": "config",
+      "title": "El editor/API de administración de Node-RED exige autenticación (adminAuth)",
+      "expected": "HTTP 401",
+      "got": "HTTP 401",
+      "status": "OK",
+      "evidence": ""
+    },
+    {
+      "id": "C5",
+      "group": "config",
+      "title": "Handshake del WebSocket con un Origin no permitido",
+      "expected": "rechazada",
+      "got": "rechazada (HTTP 403)",
+      "status": "OK",
+      "evidence": ""
+    }
+  ]
+}

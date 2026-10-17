@@ -1,0 +1,29 @@
+# Dependencias y compilados
+node_modules/
+dist/
+*.tsbuildinfo
+
+# SECRETOS: nunca se suben. (Si ya los subiste alguna vez, siguen en el historial de Git: ROTA las claves, ver docs/seguridad-iot.md)
+.env
+.env.*
+!.env.example
+infra/.env
+infra/.env.*
+!infra/.env.example
+*.pem
+*.key
+
+# Copias de seguridad y archivos locales de Node-RED
+nodered-backups/
+_respaldo/
+infra/nodered/.config*.json
+infra/nodered/.flows*.json
+infra/nodered/*.backup
+
+# Resultados de pruebas
+infra/pruebas/resultados/
+.vercel
+.DS_Store
+
+# Datos locales de Node-RED (flujo instalado, credenciales cifradas, contexto)
+infra/nodered-local/

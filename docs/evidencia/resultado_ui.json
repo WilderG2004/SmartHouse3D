@@ -1,0 +1,152 @@
+[
+ {
+  "prueba": "1. La pantalla arranca en «Solo lectura»",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "1b. Aviso de solo lectura visible",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "1c. Controles del panel desactivados",
+  "resultado": "OK",
+  "detalle": "1 controles activos (solo el botón del aviso)"
+ },
+ {
+  "prueba": "2. Se abre el diálogo de emparejamiento",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "2b. Clave incorrecta → mensaje de error, sigue en solo lectura",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "2c. La clave incorrecta NO se guardó en la pestaña",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "3. Con la clave de operador el chip pasa a «Operador»",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "3b. La clave válida se recuerda solo en sessionStorage",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "3c. La clave NO está en localStorage",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "3d. Ya no hay aviso de solo lectura",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "3e. Controles de Luces activos",
+  "resultado": "OK",
+  "detalle": "39 controles activos"
+ },
+ {
+  "prueba": "4. «Simular fuga de humo» está desactivado para el operador",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "4b. «Simular intrusión» desactivado para el operador",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "4c. Hora simulada desactivada para el operador",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "5. Armar «En casa» no pide confirmación",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "5b. Desarmar pide confirmación con código",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "5c. El código es de 8 hex y la alarma SIGUE armada",
+  "resultado": "OK",
+  "detalle": "61a166bb"
+ },
+ {
+  "prueba": "5d. Tras confirmar, la alarma queda desarmada",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "5e. Segunda confirmación aparece",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "5f. Cancelar cierra la ventana y la alarma sigue armada",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "6. «Volver a solo lectura» limpia la clave de la pestaña",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "6b. Con la clave de administrador el chip dice «Administrador»",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "6c. «Simular intrusión» queda habilitado",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "6d. Hora simulada habilitada",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "7. Tras recargar, la sesión se reanuda (Administrador)",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "8. Otra pestaña nueva arranca en solo lectura",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "9. La segunda pantalla se empareja como Operador",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "9b. Tras «Revocar», la otra pantalla vuelve a solo lectura con aviso",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "9c. El administrador conserva su sesión",
+  "resultado": "OK",
+  "detalle": ""
+ },
+ {
+  "prueba": "Sin errores en la consola del navegador",
+  "resultado": "OK",
+  "detalle": ""
+ }
+]

@@ -1,0 +1,657 @@
+{
+  "uid": "casa-iot-seguridad",
+  "title": "Casa IoT · Seguridad",
+  "tags": [
+    "casa-iot",
+    "seguridad"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "editable": true,
+  "description": "Evidencia de seguridad del canal: rechazos por motivo, replays, firmas inválidas, cuarentena, cambios de alarma y huellas de integridad. Fuente: mediciones audit, quarantine (bucket casa_iot) e integrity (bucket casa_iot_integridad).",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Órdenes aceptadas",
+      "description": "Órdenes de control que pasaron todas las comprobaciones (audit · result=accepted).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r._field == \"count\" and r.result == \"accepted\" and r.kind != \"session.hello\")\n  |> group()\n  |> sum()"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "blue",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Rechazos totales",
+      "description": "Todo lo que el servidor descartó: órdenes sin permiso, fuera de rango, firmas malas, repeticiones…",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r._field == \"count\" and r.result == \"rejected\")\n  |> group()\n  |> sum()"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Intentos de replay",
+      "description": "Mensajes repetidos o con número de secuencia viejo (reason=replay).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r._field == \"count\" and r.reason == \"replay\")\n  |> group()\n  |> sum()"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Firmas inválidas",
+      "description": "Telemetría cuya firma HMAC no coincide (reason=bad_signature).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r._field == \"count\" and r.reason == \"bad_signature\")\n  |> group()\n  |> sum()"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Lecturas en cuarentena",
+      "description": "Valores físicamente imposibles que NO se guardaron como dato confiable (measurement quarantine).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"quarantine\" and r._field == \"summary\")\n  |> group()\n  |> count()"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Rechazos por motivo en el tiempo",
+      "description": "Cada color es un motivo (reason): forbidden, bad_signature, replay, range, schema, unknown_id…",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 16,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r.result == \"rejected\" and r._field == \"count\")\n  |> group(columns: [\"reason\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: sum, createEmpty: false)"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          },
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "piechart",
+      "title": "Rechazos por motivo (total del rango)",
+      "description": "",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 4,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r.result == \"rejected\" and r._field == \"count\")\n  |> group(columns: [\"reason\"])\n  |> sum()\n  |> rename(columns: {reason: \"motivo\"})\n  |> group()"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Cambios en la alarma y acciones sensibles",
+      "description": "Auditoría de security.* (armar / desarmar), escenas, puertas y su confirmación en dos pasos (confirm_required → ok).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and (r.kind =~ /^security\\./ or r.kind == \"confirm\" or r.kind == \"scene.apply\" or r.kind == \"door.set\"))\n  |> pivot(rowKey: [\"_time\", \"kind\", \"reason\", \"result\", \"role\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"kind\", \"reason\", \"result\", \"role\", \"id\", \"session\", \"count\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "result": false
+            },
+            "renameByName": {
+              "Time": "Hora",
+              "kind": "Mensaje",
+              "reason": "Motivo",
+              "result": "Resultado",
+              "role": "Rol",
+              "id": "Dispositivo / id",
+              "session": "Sesión",
+              "count": "Veces"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Últimos rechazos",
+      "description": "Qué se rechazó, por qué y desde qué sesión (la sesión es un identificador interno de 8 caracteres, sin secretos).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r.result == \"rejected\")\n  |> pivot(rowKey: [\"_time\", \"kind\", \"reason\", \"result\", \"role\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"kind\", \"reason\", \"result\", \"role\", \"id\", \"session\", \"count\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 100)"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "result": false
+            },
+            "renameByName": {
+              "Time": "Hora",
+              "kind": "Mensaje",
+              "reason": "Motivo",
+              "result": "Resultado",
+              "role": "Rol",
+              "id": "Dispositivo / id",
+              "session": "Sesión",
+              "count": "Veces"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Lecturas en cuarentena (anomalías)",
+      "description": "Saltos físicamente imposibles detectados antes de escribir en la base: no entran como dato confiable.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 14,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"quarantine\" and r._field == \"summary\")\n  |> keep(columns: [\"_time\", \"dev\", \"measurement\", \"reason\", \"_value\"])\n  |> rename(columns: {_value: \"detalle\"})\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Huellas de integridad (bucket aparte)",
+      "description": "Una huella por bloque. Compruébalas con: npm run seguridad:integridad",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 28,
+        "w": 10,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "import \"strings\"\nfrom(bucket: \"casa_iot_integridad\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"integrity\" and (r._field == \"count\" or r._field == \"hash\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({_time: r._time, puntos: r.count, huella: strings.substring(v: r.hash, start: 0, end: 16) + \"…\"}))\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 30)"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Emparejamientos de sesión",
+      "description": "paired = clave correcta · bad_key / locked / frozen = intentos fallidos o bloqueados.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-casa-iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-casa-iot"
+          },
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r.kind == \"session.hello\" and r._field == \"count\")\n  |> group(columns: [\"reason\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: sum, createEmpty: false)"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          },
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
