@@ -65,7 +65,15 @@ node infra/setup-local.mjs               # lo hace de verdad (te pide la llave d
 Reutiliza la conexion y la llave que Node-RED **ya tiene guardadas**, asi que **no pide ninguna llave**. Cambia **solo** la ficha "Casa IoT - Gemelo digital" (tus otros flujos
 quedan intactos), guarda una copia de seguridad y comprueba que el historial responde leyendo InfluxDB. Si todavia no instalaste nada, te dice que uses `setup-local.mjs`.
 
-Opciones: `--dry-run` (solo muestra), `--flows`, `--nodered`, `--nodered-user` y `--nodered-pass`.
+Opciones: `--dry-run` (solo muestra), `--flows`, `--nodered`, `--nodered-user`, `--nodered-pass` (mejor por la variable `NODERED_PASS`, asi no queda en el historial)
+e `--integrity-bucket` (el cajon de las huellas; por defecto el que ya tenga tu instalacion o `<bucket>_integridad`, que debe existir).
+
+```powershell
+$env:NODERED_PASS = [Net.NetworkCredential]::new('', (Read-Host 'Contrasena del editor' -AsSecureString)).Password; node infra/redeploy-flow.mjs --nodered-user admin; Remove-Item Env:NODERED_PASS
+```
+
+**Ojo:** se aplica al Node-RED que este escuchando en el puerto 1880. Si ese es un `node-red` a secas (no el de `npm run nodered:iniciar`), el flujo
+acaba en otra instalacion (`~/.node-red`) y no en la segura (`infra/nodered-local/`).
 
 ## `fix-editor-warning.mjs` - el quitamanchas
 
@@ -92,7 +100,10 @@ Los **cuadros por segundo** del visor 3D no los mide este script: se miden en el
 ## Seguridad: los comandos
 
 ```bash
-npm run seguridad:secretos      # crea infra/.env con claves aleatorias (rotar: -- --rotar CASA_PAIRING_KEY)
+npm run seguridad:secretos      # crea infra/.env con claves aleatorias (NO pegues su salida en ningun chat: trae la contrasena del editor)
+npm run seguridad:secretos -- --rotar CASA_PAIRING_KEY,CASA_ADMIN_KEY,NODERED_ADMIN   # rota; la clave vieja sigue valiendo como *_PREVIOUS
+npm run seguridad:secretos -- --limpiar-previas                                      # borra las *_PREVIOUS cuando ya nadie las usa
+#   (rotar CASA_DEVICE_KEY deja sin verificar las huellas de integridad anteriores)
 npm run seguridad:tokens        # crea los dos tokens de InfluxDB (solo escribe / solo lee)
 npm run nodered:iniciar         # arranca tu Node-RED local con settings endurecidos y esos secretos
 npm run seguridad:probar        # 50 pruebas de rechazo contra TU Node-RED (-- --incluir-revocar para admin.revoke)
@@ -101,7 +112,12 @@ npm run seguridad:vercel -- --backend casa-api.midominio.com   # genera vercel.j
 npm run influx:simulado         # InfluxDB de mentira para probar sin Docker (no evalua Flux)
 ```
 
-Todos **evitan imprimir claves**. `seguridad:probar` simula ataques: usalo **solo** contra tu propio servidor.
+Todos **evitan imprimir claves** (salvo `seguridad:secretos`, que muestra **una vez** la contrasena del editor). `seguridad:probar` simula ataques:
+usalo **solo** contra tu propio servidor. Necesita las claves del entorno: `node --env-file=infra/.env infra/pruebas-seguridad.mjs` las carga sin mostrarlas.
+Las pruebas B (telemetria firmada) solo corren con `CASA_INGEST=on`; vuelve a `off` al terminar y reinicia Node-RED.
+
+**Comprobar que tu Node-RED es el seguro** (PowerShell): `Get-NetTCPConnection -LocalPort 1880 -State Listen` debe mostrar `127.0.0.1`,
+`curl.exe -s http://127.0.0.1:1880/auth/login` debe traer `"type":"credentials"` y `http://127.0.0.1:1880/flows` sin iniciar sesion debe dar **401**.
 
 ## `docker-compose.yml` - todo en uno (opcional)
 
@@ -120,4 +136,5 @@ npm run seguridad:tokens
 docker compose -f infra/docker-compose.yml up -d --build
 ```
 Ningun secreto esta escrito en el archivo: si falta uno, Docker se detiene con un mensaje. Los puertos solo se abren en tu equipo; para internet usa `despliegue/`.
-**No se probo con Docker** en el entorno donde se escribio: revisalo con `docker compose -f infra/docker-compose.yml config`.
+**No se probo con Docker** en el entorno donde se escribio: revisalo con `docker compose -f infra/docker-compose.yml config --quiet`
+(sin `--quiet`, Docker **imprime todos los secretos** de `infra/.env` ya sustituidos).

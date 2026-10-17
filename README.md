@@ -42,7 +42,8 @@ cada orden (rol, forma, rangos), pide un **codigo de confirmacion** en las accio
 
 ### Lo que necesitas antes
 - **Node.js** instalado (version 18 o mas).
-- **Node-RED** encendido (se abre en `http://localhost:1880`). Si no lo tienes encendido, escribe `node-red` en una terminal.
+- **Node-RED** instalado (`npm install -g node-red`). Se enciende **siempre** con `npm run nodered:iniciar` (paso 0), **nunca** con `node-red` a secas:
+  ese usa otra configuracion, escucha en toda la red (`0.0.0.0`) y deja el editor **sin contrasena**.
 - Una cuenta de **InfluxDB** (puede ser la gratuita en la nube).
 
 ### Paso 0 - Crear los secretos y encender Node-RED con la seguridad puesta (solo la primera vez)
@@ -57,18 +58,24 @@ Anota la contrasena del editor que te muestra el primer comando (no se puede rec
 ### Paso 1 - Preparar Node-RED (solo la primera vez)
 Un script hace todo: crea el "cajon" donde se guardan los datos, **dos llaves propias de un solo permiso** (una escribe, otra lee), un cajon aparte para las huellas de integridad y deja el flujo instalado.
 
-```bash
-node infra/setup-local.mjs --dry-run --nodered-user admin --nodered-pass <contrasena-del-editor>   # solo te muestra lo que va a hacer
-node infra/setup-local.mjs --nodered-user admin --nodered-pass <contrasena-del-editor>             # lo hace de verdad
+```powershell
+# la contrasena del editor se escribe oculta y no queda en el historial de la terminal
+$env:NODERED_PASS = [Net.NetworkCredential]::new('', (Read-Host 'Contrasena del editor' -AsSecureString)).Password
+node infra/setup-local.mjs --dry-run --nodered-user admin    # solo te muestra lo que va a hacer
+node infra/setup-local.mjs --nodered-user admin              # lo hace de verdad
+Remove-Item Env:NODERED_PASS
 ```
+(Tambien acepta `--nodered-pass <contrasena>`, pero asi la contrasena queda guardada en el historial de la terminal.)
 Te pedira una **llave de administrador** de InfluxDB (la creas en la pagina de InfluxDB, en la seccion *API Tokens*). Es temporal: **borrala al terminar**,
 porque el script ya crea llaves propias, mas limitadas y seguras, para Node-RED.
 
 ### Paso 2 - Si ya lo instalaste y solo quieres actualizar
 No pide llave. Cambia el flujo por el de esta version y guarda una copia de seguridad de lo que tenias.
-```bash
-node infra/redeploy-flow.mjs --dry-run --nodered-user admin --nodered-pass <contrasena-del-editor>
-node infra/redeploy-flow.mjs --nodered-user admin --nodered-pass <contrasena-del-editor>
+```powershell
+$env:NODERED_PASS = [Net.NetworkCredential]::new('', (Read-Host 'Contrasena del editor' -AsSecureString)).Password
+node infra/redeploy-flow.mjs --dry-run --nodered-user admin
+node infra/redeploy-flow.mjs --nodered-user admin
+Remove-Item Env:NODERED_PASS
 ```
 
 ### Paso 3 - Encender la pantalla
@@ -81,7 +88,7 @@ clave de `CASA_PAIRING_KEY` (Operador) o `CASA_ADMIN_KEY` (Administrador, ademas
 | Rol | Que puede hacer |
 |---|---|
 | **Solo lectura** | Ver todo. Las ordenes se rechazan. |
-| **Operador** | Luces, aires, enchufes, puertas, escenas y alarma (desarmar o abrir una puerta de la calle pide confirmar con un codigo). |
+| **Operador** | Luces, aires, enchufes, puertas, escenas y alarma. **Desarmar**, **abrir una puerta del perimetro** (entrada o garaje) y **una escena que desarma** (*Llegue a casa*) piden confirmar con un codigo. |
 | **Administrador** | Todo lo anterior, mas simulaciones, hora simulada y *revocar las otras sesiones*. |
 
 ### Opcional - Todo con Docker
@@ -102,8 +109,12 @@ Si prefieres no instalar nada a mano, mira [`infra/README.md`](infra/README.md):
 | Un aviso amarillo que dice **"Simulacion local"** | La pantalla esta en modo practica (inventa ella los datos). Abre el archivo `.env` y pon `VITE_TELEMETRY_MODE=websocket`; reinicia con `npm run dev`. |
 | La cabecera dice **"Solo lectura"** y los controles estan grises | Es lo normal: la pantalla aun no esta emparejada. Pulsa **Solo lectura** y escribe la clave de `infra/.env`. |
 | Al emparejar dice **"La clave no es correcta"**, **"Demasiados intentos"** o **"congelo el emparejamiento"** | Revisa la clave (`CASA_PAIRING_KEY` / `CASA_ADMIN_KEY`). Tras 5 fallos se bloquea un minuto; si un Administrador uso *Revocar*, el emparejamiento espera 5 minutos. |
-| Sale **"Sin cifrar"** en la cabecera | La conexion es `ws://`: aceptable solo en tu equipo. Desplegado, usa `wss://` (ver `infra/despliegue/README.md`). |
-| La cabecera dice **"Reconectando"** o no hay datos | Node-RED esta apagado o no tiene el flujo. Enciendelo (`node-red`) y ejecuta `node infra/redeploy-flow.mjs`. |
+| Sale **"Sin cifrar"** en la cabecera | Es normal en tu equipo: `npm run dev` usa `ws://localhost`, que no sale del PC. Publicado, la pagina usa `wss://` y sale **"Canal cifrado"** (ver `infra/despliegue/README.md`). |
+| La cabecera dice **"Reconectando"** o no hay datos | Node-RED esta apagado o no tiene el flujo. Enciendelo con `npm run nodered:iniciar` y ejecuta `node infra/redeploy-flow.mjs --nodered-user admin`. |
+| Al encender Node-RED sale **`Error: port in use`** | Ya hay otro Node-RED en el puerto 1880 (otra terminal abierta). Cierralo con **Ctrl+C** en esa terminal. Para ver cual es: `Get-NetTCPConnection -LocalPort 1880 -State Listen`. |
+| El editor **no pide contrasena** | Estas usando un `node-red` a secas, sin la configuracion segura. Cierralo y enciende con `npm run nodered:iniciar` (ver "Comprobar que tu Node-RED es el seguro"). |
+| Pulsas una puerta de la calle o *Llegue a casa* y **no aparece "Confirmar accion"** | El Node-RED tiene un flujo viejo. Ejecuta `npm run nodered:build` y `node infra/redeploy-flow.mjs --nodered-user admin`; mira la terminal de Node-RED por si hay un `ReferenceError`. |
+| Un aviso de **rechazo** al pulsar un boton | Node-RED rechazo la orden y dice el motivo (rol insuficiente, valor fuera de rango, codigo caducado...). Queda anotado en la medicion `audit`. |
 | **Triangulo rojo** en los nodos de InfluxDB dentro de Node-RED | Es un aviso visual. Ejecuta `node infra/fix-editor-warning.mjs` y recarga el editor con F5. |
 | En el panel **Pipeline IoT**, la tarjeta "Guarda en InfluxDB" sale en rojo | InfluxDB no esta aceptando los datos (llave vencida, direccion equivocada...). La tarjeta muestra el mensaje de error. |
 | Las graficas de 15 min / 1 h / 24 h salen vacias | Espera unos minutos: solo hay historial desde que empezaron a guardarse datos. |
@@ -204,23 +215,77 @@ Cada carpeta tiene su propio `README.md`, escrito en palabras sencillas, que exp
 
 | Archivo | Que es |
 |---|---|
-| `package.json` | La "lista de ingredientes" del proyecto y sus comandos: `npm run dev` (enciende la pantalla), `npm run build` (la prepara para publicar), `npm run nodered:build` (arma el flujo), `npm run setup:local` y `npm run flow:redeploy` (los dos instaladores). |
+| `package.json` | La "lista de ingredientes" del proyecto y sus comandos: `npm run dev` (enciende la pantalla), `npm run build` (la prepara para publicar), `npm run nodered:build` (arma el flujo), `npm run setup:local` y `npm run flow:redeploy` (los dos instaladores), `npm run nodered:iniciar` (Node-RED con la configuracion segura) y los de seguridad: `seguridad:secretos`, `seguridad:tokens`, `seguridad:probar`, `seguridad:integridad` y `seguridad:vercel`. |
 | `index.html` | La pagina vacia donde arranca la interfaz: titulo y el espacio donde se dibuja todo. (La letra Inter viene incluida en el proyecto, no se descarga de Google.) |
 | `vite.config.ts` | Ajustes de Vite, la herramienta que enciende la pantalla (usa el puerto 5173). |
 | `tsconfig.json` | Reglas del lenguaje TypeScript para detectar errores al programar. |
 | `.env.example` | Plantilla de ajustes de la pantalla: de donde salen los datos y las direcciones de Node-RED. Se copia como `.env`. **No lleva claves**. |
-| `.gitignore` | Lo que **nunca** se sube a Git: `node_modules`, `.env` y `infra/.env` (secretos), copias de seguridad de Node-RED. |
+| `.gitignore` | Lo que **nunca** se sube a Git: `node_modules`, `.env` y `infra/.env` (secretos), la carpeta de datos de tu Node-RED (`infra/nodered-local/`, con las llaves cifradas), copias de seguridad (`nodered-backups/`, `_respaldo/`) y los resultados de tus pruebas (`infra/pruebas/resultados/`). |
 | `vercel.json` | Cabeceras de seguridad (CSP, HSTS...) para publicar en Vercel. Se regenera con `npm run seguridad:vercel -- --backend tu-dominio`. |
 | `.env` | Tus ajustes reales (no viene en el zip para no borrar los tuyos). |
 | `AGENTS.md` | Instrucciones para un asistente de programacion (OpenCode, etc.). |
 
-## Cuidados de seguridad
+## Seguridad IoT
+
+El proyecto original dejaba que **cualquiera** que llegara al WebSocket mandara ordenes, tenia el token de InfluxDB escrito en el repositorio y
+el editor de Node-RED sin contrasena. Esta version lo cierra. Se protege contra dos riesgos: **R1**, que alguien que no deberia mande una orden
+(abrir una puerta, desarmar la alarma), y **R2**, que se expongan credenciales o servicios. El informe completo, con cada hallazgo (archivo y
+linea), el plan, la evidencia y los **limites honestos**, esta en [`docs/seguridad-iot.md`](docs/seguridad-iot.md).
+
+**Regla de oro:** toda la validacion vive en **Node-RED**. La pantalla solo oculta botones por comodidad; aunque alguien la modifique, el servidor
+vuelve a revisar cada orden.
+
+### Que protege y como
+
+| Que | Como funciona | Donde vive |
+|---|---|---|
+| **Quien puede mandar ordenes** | Toda pantalla nueva es de **solo lectura**. Para controlar hay que **emparejarla** con una clave (`CASA_PAIRING_KEY` = Operador, `CASA_ADMIN_KEY` = Administrador). No hay cuentas de personas: se identifica la **sesion** (la pestana). | `06-sesion-autorizar.js` |
+| **Que puede hacer cada rol** | Cada tipo de orden tiene un rol minimo (tabla de la seccion "Encender la pantalla"). Una orden de un rol insuficiente se rechaza con `forbidden`. | `tools/security-policy.mts` (manda) y su copia en `src/config/security.config.ts` (solo para desactivar botones) |
+| **Adivinar la clave** | **5 intentos fallidos** bloquean esa sesion **1 minuto**; mas de 30 fallos por minuto entre todas las sesiones bloquean el emparejamiento. La clave se compara en tiempo constante y solo se guarda su huella (SHA-256). | `06-sesion-autorizar.js` |
+| **Acciones sensibles** | **Desarmar la alarma**, **abrir una puerta del perimetro** y **una escena que desarma** no se ejecutan al pulsar: el servidor responde con un **codigo de un solo uso** valido **15 s** y solo para esa sesion; la pantalla muestra **"Confirmar accion"**. Un codigo ajeno, repetido o caducado se rechaza. | `06-sesion-autorizar.js` · `SessionOverlays.tsx` |
+| **Ordenes mal formadas** | Esquema estricto: solo las claves esperadas (nada de `__proto__` ni campos internos), ids que existen y valores en rango (intensidad 0-100, consigna del aire, hora...). Mensajes de mas de **2 KB** se descartan. | `05-parsear-comando.js` · `06-sesion-autorizar.js` |
+| **Inundacion** | Limite de mensajes por sesion (cubeta de fichas): una sesion de lectura casi no puede enviar; una de control aguanta un deslizador, no un ataque. | `06-sesion-autorizar.js` |
+| **Expulsar a todos** | El Administrador puede **revocar** las demas sesiones: vuelven a solo lectura y el emparejamiento se congela **5 minutos**. | `06-sesion-autorizar.js` |
+| **Quien puede conectarse** | El WebSocket solo acepta paginas de los origenes permitidos (`CASA_ALLOWED_ORIGINS`) y limita conexiones simultaneas e intentos por minuto **por IP**. La API (`/api/...`) solo responde CORS a esos mismos origenes (antes era `*`). | `seguridad-ws.js` · `settings.js` |
+| **El editor de Node-RED** | Pide usuario y contrasena (solo se guarda el hash bcrypt); sin hash, el editor queda **apagado**. Node-RED escucha solo en **`127.0.0.1`** (tu equipo). | `settings.js` · `iniciar-nodered.mjs` |
+| **Los datos que se guardan** | Cada lectura va **firmada (HMAC-SHA256)** con marca de tiempo y numero de secuencia. Antes de entrar a InfluxDB se revisa la firma, que no sea vieja (30 s) ni repetida, el esquema y los rangos; lo imposible (+35 °C en un instante) va a **cuarentena**. | `86-firmar-telemetria.js` · `87-validar-telemetria.js` |
+| **Que nadie altere el historial** | Cada bloque de datos deja una **huella encadenada** en un bucket aparte (`<bucket>_integridad`). `npm run seguridad:integridad` la recalcula y avisa si se borro o cambio algo. | `verificar-integridad.mjs` |
+| **Las llaves de InfluxDB** | **Dos tokens de un solo permiso**: uno solo escribe (Node-RED), otro solo lee (consultas). Quedan **cifrados** dentro de Node-RED (`credentialSecret`), no en el repositorio. | `setup-local.mjs` · `crear-tokens-influx.mjs` |
+| **Registro de lo que pasa** | Cada rechazo y cada accion sensible se anota en la medicion **`audit`** de InfluxDB (motivo, rol, tipo de orden), **sin** claves ni el id completo de la sesion. | `08-auditar.js` |
+| **El navegador** | `vercel.json` trae una politica **CSP** (la pagina solo puede hablar con tu backend), HSTS y otras cabeceras. El chip **Canal cifrado / Sin cifrar** de la cabecera dice si la conexion va por `wss://`. | `vercel.json` · `Session.tsx` |
+| **Canales alternos** | Se **elimino** el adaptador MQTT directo desde el navegador, que se saltaba todo. El unico camino de control es el WebSocket autorizado. | — |
+| **Entrada de dispositivos externos** | `POST /api/ingest` acepta telemetria firmada (un ESP32 real, por ejemplo). Esta **apagada** por defecto (`CASA_INGEST=off`) y responde 404. | `09-ingesta-recibir.js` |
+
+### Comprobar que tu Node-RED es el seguro
+
+Con Node-RED encendido (`npm run nodered:iniciar`), en PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 1880 -State Listen | Select-Object LocalAddress   # debe decir 127.0.0.1 (no 0.0.0.0)
+curl.exe -s http://127.0.0.1:1880/auth/login                                     # debe traer "type":"credentials" (no {})
+curl.exe -s -o NUL -w "%{http_code}\n" http://127.0.0.1:1880/flows                # debe dar 401
+```
+
+Y las **50 pruebas de rechazo** (simulan ataques: usalas **solo** contra tu propio Node-RED; durante ~1 minuto no podras emparejar porque
+prueba 5 claves malas, y dejan puntos de prueba con `room=prueba`):
+
+```powershell
+node --env-file=infra/.env infra/pruebas-seguridad.mjs --json infra/pruebas/resultados/local.json
+```
+
+Con la ingesta apagada salen las A y C correctas y las B **omitidas** (no es un fallo). Para correrlas todas, pon `CASA_INGEST=on` en `infra/.env`,
+reinicia Node-RED, ejecuta las pruebas y **vuelve a `off`**. `--incluir-revocar` agrega A15, que congela el emparejamiento 5 minutos.
+Ultimo resultado en este equipo: **49 correctas, 0 fallas, 1 omitida (A15)**.
+
+### Cuidados
 
 - **Nunca subas secretos a Git.** Viven en `infra/.env` (ignorado por `.gitignore`). `.env.example` solo trae nombres, sin valores. Los crea `npm run seguridad:secretos`.
-- **Si algun secreto estuvo en un repositorio, rotalo**: aunque lo borres de los archivos, sigue en el historial de Git. El proyecto original traia un token de desarrollo y contrasenas por defecto (de InfluxDB y de Grafana; aqui `[REDACTADO]`): cambialos.
-- **No pongas claves en variables `VITE_...`**: Vite las copia dentro del codigo que se descarga el navegador y cualquiera las lee. La clave de emparejamiento se escribe en la pantalla.
-- **No abras puertos a internet** sin el proxy con certificado (`infra/despliegue/`): InfluxDB, Node-RED y Grafana nunca deben quedar publicados directamente.
-- Para comprobar que todo se comporta, ejecuta `npm run seguridad:probar` (solo contra tu propio Node-RED). El informe completo, con hallazgos, evidencia y **limites honestos** (que esta probado y que es solo plantilla), esta en [`docs/seguridad-iot.md`](docs/seguridad-iot.md).
+- **No pegues la salida de `npm run seguridad:secretos`** en un chat ni en un documento: trae la contrasena del editor. Si se filtra, vuelve a rotarla (`-- --rotar NODERED_ADMIN`) y reinicia Node-RED.
+- **Si algun secreto estuvo en un repositorio o en un chat, rotalo** (y revoca el token en InfluxDB ▸ *API Tokens*): aunque lo borres, sigue en el historial. El proyecto original traia un token de desarrollo y contrasenas por defecto (de InfluxDB y de Grafana; aqui `[REDACTADO]`): cambialos.
+- **No guardes el proyecto en una carpeta que se sincroniza** (OneDrive, Dropbox...): `infra/.env` y la llave que descifra los tokens se subirian a la nube.
+- **No pongas claves en variables `VITE_...`**: Vite las copia dentro del codigo que se descarga el navegador y cualquiera las lee. La clave de emparejamiento se escribe en la pantalla y solo vive en esa pestana.
+- **No abras puertos a internet** sin el proxy con certificado o el tunel (`infra/despliegue/`): InfluxDB, Node-RED y Grafana nunca deben quedar publicados directamente, y el editor nunca debe salir a internet.
+- **Despues de cambiar algo de seguridad**, vuelve a pasar las pruebas de rechazo y deja todas en verde.
 
 ## Sobre las puertas del modelo 3D
 

@@ -31,7 +31,8 @@ enviar cada sesión). Toda la lógica vive en Node-RED; React solo muestra y env
   marca de tiempo y número de secuencia, se valida antes de guardarse y las lecturas imposibles van a **cuarentena**. El historial lleva
   **huellas encadenadas** en un bucket aparte. Los secretos salen del repositorio.
 - **Prueba:** 48 pruebas de rechazo automáticas contra un Node-RED 5.0.8 real (48/48 correctas) y 30 comprobaciones de la interfaz en un
-  navegador real con la política CSP activa (30/30). Ver §7.
+  navegador real con la política CSP activa (30/30). Después se añadieron A14f-A14i (confirmación de puertas del perímetro y escenas que
+  desarman): la ejecución local del 2026-10-17 dio **49/50 correctas y 1 omitida** (A15). Ver §7.
 - **Qué no está probado:** Docker, Compose, Caddy, nginx, Grafana, InfluxDB real, Vercel. Son plantillas. Ver §9.
 
 ### Las 5 medidas de mayor impacto
@@ -359,6 +360,11 @@ pestaña; otra pestaña nueva arranca en solo lectura; «Revocar» baja a la otr
    Vercel).
 4. Comprobar que existen los tags de imagen `5.0.8-22`, `grafana/grafana:11.6.1` y `caddy:2.10-alpine`, o cambiarlos por otros **concretos**.
 5. Pasar `npm run seguridad:probar` contra tu servidor y guardar la salida como evidencia del taller.
+6. **Encender Node-RED siempre con `npm run nodered:iniciar`** y comprobar que escucha en `127.0.0.1` y que el editor pide contraseña
+   (`/auth/login` → `"type":"credentials"`, `/flows` → 401). Ver la sección "Seguridad IoT" del `README.md` principal.
+7. **Revocar en InfluxDB ▸ API Tokens** cualquier token que se haya pegado en un chat o un documento, y los que ya no use nadie.
+8. Si la contraseña del editor o una clave se filtra (por ejemplo, al pegar la salida de `seguridad:secretos`), **rotarla**
+   (`npm run seguridad:secretos -- --rotar NODERED_ADMIN`) y reiniciar Node-RED.
 
 ---
 
@@ -376,7 +382,15 @@ pestaña; otra pestaña nueva arranca en solo lectura; «Revocar» baja a la otr
   tiene el mismo rol. Se mitiga con `admin.revoke`, la rotación y la confirmación en dos pasos (que protege contra repetición y errores, **no**
   contra alguien que ya tiene una sesión de Operador).
 - **Docker, Compose, Caddy, nginx, Grafana, InfluxDB real y Vercel no se probaron** (no había Docker ni acceso a esos registros). El simulador de
-  InfluxDB (`infra/pruebas/influx-simulado.mjs`) es una prueba de lógica: no evalúa Flux.
+  InfluxDB (`infra/pruebas/influx-simulado.mjs`) es una prueba de lógica: no evalúa Flux. *Actualización 2026-10-17:* la ejecución local sí usó
+  **InfluxDB Cloud real** (escritura, lectura e historial verificados, 49/50 pruebas); la sintaxis de `docker-compose.prod.yml` se validó con
+  `config --quiet`. Siguen **sin probar** Caddy, nginx, Grafana, Vercel y Cloudflare Tunnel (incluido qué IP llega en `X-Forwarded-For` a través del túnel).
+- **La protección depende de cómo se arranca Node-RED.** Un `node-red` a secas usa `~/.node-red/settings.js`: escucha en `0.0.0.0`, deja el editor
+  sin contraseña, no controla el `Origin` y no carga las claves (nadie puede emparejar). Así se encontró funcionando en un equipo de prueba;
+  las pruebas C4/C5 lo detectan.
+- **Los secretos de `infra/.env` están en texto plano** (solo la contraseña del editor va como hash) y la llave que descifra los tokens guardados en
+  Node-RED (`NODERED_CREDENTIAL_SECRET`) vive en ese mismo archivo. Los protege el sistema de archivos: no dejes el proyecto en una carpeta
+  sincronizada con la nube y limita los permisos del archivo a tu usuario.
 - **Las claves de las pruebas son efímeras de desarrollo.** Nada de lo que aparece en la evidencia es un secreto real.
 - **El archivo `taller-seguridad-iot.md`** que mencionaba el prompt no se recibió: los criterios salen del propio prompt.
 - **Grafana embebido** (`VITE_GRAFANA_URL`) necesita permitir la incrustación y chocará con el bloqueo de cookies entre sitios; para el panel de

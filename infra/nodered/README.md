@@ -57,6 +57,6 @@ Si no definiste claves, **nadie podra emparejar la pantalla** (todas quedan en s
 ```
 1. Edita el archivo de src/ que quieras
 2. npm run nodered:build              (arma el flujo de nuevo)
-3. node infra/redeploy-flow.mjs       (lo instala en tu Node-RED)
+3. node infra/redeploy-flow.mjs --nodered-user admin   (lo instala en tu Node-RED; la contrasena por $env:NODERED_PASS)
 4. Recarga el editor con F5
 ```

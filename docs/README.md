@@ -19,7 +19,11 @@
 | Que hace cada pieza ("nodo") de Node-RED | `infra/nodered/src/README.md` |
 | Como se arma el flujo de Node-RED | `infra/nodered/tools/README.md` |
 | Los instaladores y Docker | `infra/README.md` |
-| La seguridad del canal (roles, firmas, TLS, secretos) y como probarla | `docs/seguridad-iot.md` |
+| La seguridad en una pagina: que protege, como comprobarlo y los cuidados | `README.md` principal, seccion **"Seguridad IoT"** |
+| La seguridad del canal en detalle (hallazgos, roles, firmas, TLS, secretos, limites) y como probarla | `docs/seguridad-iot.md` |
+| Las herramientas de seguridad (secretos, tokens, pruebas, integridad) | `infra/README.md`, seccion "Seguridad: los comandos" |
+| Que pieza de Node-RED hace cada control (sesion, confirmacion, firma, auditoria) | `infra/nodered/src/README.md` |
+| Los resultados de las pruebas en tu equipo | `infra/pruebas/resultados/` (no se sube a Git); la evidencia entregada esta en `docs/evidencia/` |
 | Como publicar el backend con TLS y el frontend en Vercel | `infra/despliegue/README.md` |
 | El modelo 3D de la casa | `public/README.md` |
 | Como funciona el recorrido en primera persona | `src/three/README.md` (seccion "Recorrer la casa") |
@@ -58,3 +62,14 @@
 | **TLS / `wss://`** | El cifrado de la conexion (el candado). Sin el, un navegador en `https://` no deja abrir el WebSocket. |
 | **CSP** | Una lista que el navegador respeta: a que servidores puede conectarse la pagina. Si alguien colara un script, no podria mandar datos a un sitio ajeno. |
 | **Cuarentena** | Donde van las lecturas imposibles (por ejemplo +35 C en un instante): se guardan aparte, no como dato confiable. |
+| **Emparejar** | Escribir la clave en la pantalla para que esa sesion pase de *solo lectura* a *Operador* o *Administrador*. Tras 5 claves malas se bloquea un minuto. |
+| **Confirmacion en dos pasos** | Para las acciones sensibles (desarmar, abrir una puerta del perimetro, una escena que desarma) el servidor manda un **codigo de un solo uso** que vale 15 s; la orden solo se ejecuta si la pantalla lo devuelve a tiempo. |
+| **Revocar** | El Administrador expulsa a las demas sesiones de control (vuelven a solo lectura) y congela el emparejamiento 5 minutos. |
+| **Auditoria** | El registro de cada rechazo y cada accion sensible (medicion `audit` en InfluxDB). No guarda claves. |
+| **Huella de integridad** | Un resumen (hash) de cada bloque de datos, encadenado con el anterior y guardado en otro bucket: si alguien borra o cambia un dato, la cadena no cuadra. |
+| **Token de un solo permiso** | Una llave de InfluxDB que solo puede escribir **o** solo leer, y solo en un bucket. Si la roban, el dano es menor. |
+| **`Origin`** | La cabecera con la que el navegador dice desde que pagina viene la conexion. Node-RED solo acepta las de la lista `CASA_ALLOWED_ORIGINS`. |
+| **CORS** | La regla que decide que paginas pueden leer las respuestas de la API. Antes era "cualquiera" (`*`); ahora solo la lista permitida. |
+| **Editor (adminAuth)** | La pantalla de Node-RED donde se editan los flujos. Con la configuracion segura pide usuario y contrasena; si no, queda apagado. |
+| **`127.0.0.1`** | "Este mismo equipo". Un programa que escucha ahi no es alcanzable desde otros equipos de la red; `0.0.0.0` significa "desde cualquiera". |
+| **Limite de frecuencia** (*rate limit*) | Un tope de mensajes por segundo por sesion (y de conexiones por IP) para que nadie pueda inundar el servidor. |

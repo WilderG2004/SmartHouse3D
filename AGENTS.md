@@ -10,8 +10,9 @@ Todo lo hace un script; **no configures nodos a mano ni edites el editor**.
 0. Si no existe `infra/.env`: `npm run seguridad:secretos` (crea claves aleatorias; imprime UNA vez la contrasena del editor de Node-RED: no la repitas en el chat ni en commits) y arranca Node-RED con `npm run nodered:iniciar` (usa `infra/nodered/settings.js` endurecido y esos secretos).
 1. Comprueba que Node-RED (`http://localhost:1880`) esta corriendo y que InfluxDB 2.x responde. Por defecto es InfluxDB
    Cloud (`https://us-east-1-1.aws.cloud2.influxdata.com`, bucket `Casa_IoT`); para uno local: `--influx-url http://localhost:8086 --bucket casa_iot`.
-2. `node infra/setup-local.mjs --dry-run --nodered-user admin --nodered-pass <contrasena del editor>` -> muestra el plan sin cambiar nada (con el `settings.js` endurecido el editor pide usuario y contrasena; sin `NODERED_ADMIN_HASH` queda apagado).
-3. `node infra/setup-local.mjs --nodered-user admin --nodered-pass <contrasena del editor>` -> lo aplica (crea DOS tokens de InfluxDB de un solo permiso y el bucket aparte de huellas). El token de administrador de InfluxDB debe estar en la variable de
+   La contrasena del editor la pone el usuario en su terminal con `$env:NODERED_PASS` (los scripts la leen de ahi); **no se la pidas ni la escribas en el comando**.
+2. `node infra/setup-local.mjs --dry-run --nodered-user admin` -> muestra el plan sin cambiar nada (con el `settings.js` endurecido el editor pide usuario y contrasena; sin `NODERED_ADMIN_HASH` queda apagado).
+3. `node infra/setup-local.mjs --nodered-user admin` -> lo aplica (crea DOS tokens de InfluxDB de un solo permiso y el bucket aparte de huellas). El token de administrador de InfluxDB debe estar en la variable de
    entorno `INFLUX_ADMIN_TOKEN` (o pasarse con `--influx-token`).
 4. Si falla, el mensaje dice que corregir (puerto, token, adminAuth: `--nodered-user/--nodered-pass`, varias
    organizaciones: `--org`). Corrige la causa y repite: el script es seguro de ejecutar varias veces.
