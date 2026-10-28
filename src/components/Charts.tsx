@@ -21,27 +21,28 @@ import { fetchClimateRange, fetchPowerRange, fetchSmokeRange } from '../services
 import { useHouseStore } from '../store/useHouseStore'
 import { useUiStore } from '../store/useUiStore'
 import type { PowerPoint, TimePoint } from '../types/iot'
+import { HiddenNote } from './Session'
 
 /** Formato de los ejes según el rango: segundos en vivo, HH:MM en historial. */
 const tickFmt = (range: string) => (range === 'live' || range === '15m' ? fmtTime : fmtClock)
 const labelFmt = (range: string) => (range === 'live' ? (v: unknown) => fmtTime(Number(v)) : (v: unknown) => fmtDateTime(Number(v)))
 
-const axis = { stroke: '#587069', fontSize: 12 }
-const GRID = '#e3e9e6'
+const axis = { stroke: '#94a3b8', fontSize: 12 }
+const GRID = 'rgba(255, 255, 255, 0.07)'
 const tooltipStyle = {
-  background: '#ffffff',
-  border: '1px solid #dbe3df',
+  background: 'rgba(15, 23, 42, 0.92)',
+  border: '1px solid rgba(255, 255, 255, 0.12)',
   borderRadius: 12,
   fontSize: 13,
-  color: '#17302c',
-  boxShadow: '0 6px 18px rgba(23, 48, 44, 0.12)',
+  color: '#e2e8f0',
+  boxShadow: '0 12px 30px rgba(2, 6, 23, 0.5)',
 }
 
 const CATEGORIES = [
-  { key: 'base', label: 'Base (nevera y standby)', color: '#9aaaa5' },
-  { key: 'lights', label: 'Luces', color: '#f4a21d' },
-  { key: 'ac', label: 'Aire acondicionado', color: '#2b9bd6' },
-  { key: 'plugs', label: 'Enchufes', color: '#2fa56f' },
+  { key: 'base', label: 'Base (nevera y standby)', color: '#64748b' },
+  { key: 'lights', label: 'Luces', color: '#f59e0b' },
+  { key: 'ac', label: 'Aire acondicionado', color: '#06b6d4' },
+  { key: 'plugs', label: 'Enchufes', color: '#10b981' },
 ] as const
 
 function ChartShell({
@@ -70,7 +71,9 @@ function Empty({ h }: { h?: HistoryState<unknown> }) {
   const text =
     h && h.range !== 'live'
       ? h.error
-        ? 'No se pudo cargar el historial. ¿Node-RED e InfluxDB están en marcha?'
+        ? h.authNeeded
+          ? h.error
+          : 'No se pudo cargar el historial. ¿Node-RED e InfluxDB están en marcha?'
         : h.loading || h.data === null
           ? 'Cargando historial…'
           : 'Aún no hay datos guardados en este rango.'
@@ -82,11 +85,14 @@ function Empty({ h }: { h?: HistoryState<unknown> }) {
 
 export function PowerChart() {
   const live = useLive((s) => s.powerHistory)
+  const restricted = useHouseStore((s) => s.restricted)
   const h = useRangeData(fetchPowerRange)
   const data = h.range === 'live' ? live : (h.data ?? [])
   return (
     <ChartShell title="Curva de consumo eléctrico (W)">
-      {data.length < 2 ? (
+      {restricted && h.range === 'live' ? (
+        <HiddenNote what="El consumo eléctrico" />
+      ) : data.length < 2 ? (
         <Empty h={h} />
       ) : (
         <ResponsiveContainer width="100%" height="100%">
@@ -124,9 +130,18 @@ export function PowerChart() {
 
 export function BreakdownChart() {
   const power = useLive((s) => s.power)
+  const restricted = useHouseStore((s) => s.restricted)
   const b = power.breakdown
   const parts = CATEGORIES.map((c) => ({ ...c, value: b ? b[c.key] : c.key === 'base' ? power.watts : 0 }))
   const total = parts.reduce((a, p) => a + p.value, 0) || 1
+
+  if (restricted) {
+    return (
+      <ChartShell title="¿En qué se va la energía?" height="h-auto">
+        <HiddenNote what="El reparto del consumo" />
+      </ChartShell>
+    )
+  }
 
   return (
     <ChartShell title="¿En qué se va la energía?" height="h-auto">
@@ -225,9 +240,9 @@ export function ClimateChart() {
             {ac?.on && ac.mode === 'cool' && (
               <ReferenceLine
                 y={ac.setpoint}
-                stroke="#2b9bd6"
+                stroke="#06b6d4"
                 strokeDasharray="5 4"
-                label={{ value: 'Consigna A/C', fill: '#07679a', fontSize: 12, position: 'insideTopLeft' }}
+                label={{ value: 'Consigna A/C', fill: '#22d3ee', fontSize: 12, position: 'insideTopLeft' }}
               />
             )}
             <Tooltip
@@ -235,8 +250,8 @@ export function ClimateChart() {
               labelFormatter={labelFmt(h.range)}
               formatter={(v, name) => [`${fmtNumber(Number(v), 1)} °C`, name]}
             />
-            <Line name="Habitación" type="monotone" dataKey="room" stroke="#e8890c" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-            <Line name="Exterior" type="monotone" dataKey="outdoor" stroke="#7d948d" strokeWidth={1.75} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+            <Line name="Habitación" type="monotone" dataKey="room" stroke="#f59e0b" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+            <Line name="Exterior" type="monotone" dataKey="outdoor" stroke="#94a3b8" strokeWidth={1.75} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       )}
@@ -262,16 +277,16 @@ export function SmokeChart() {
             <YAxis domain={[0, 'dataMax + 60']} width={48} {...axis} />
             <ReferenceLine
               y={SMOKE.alarmThresholdPpm}
-              stroke="#d9382c"
+              stroke="#f43f5e"
               strokeDasharray="5 4"
-              label={{ value: 'Umbral', fill: '#a8231a', fontSize: 12, position: 'insideTopLeft' }}
+              label={{ value: 'Umbral', fill: '#fb7185', fontSize: 12, position: 'insideTopLeft' }}
             />
             <Tooltip
               contentStyle={tooltipStyle}
               labelFormatter={labelFmt(h.range)}
               formatter={(v) => [`${fmtNumber(Number(v))} ppm`, 'Humo']}
             />
-            <Line type="monotone" dataKey="value" stroke="#2b9bd6" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2.5} dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       )}

@@ -164,7 +164,7 @@ export function WalkHud() {
   return (
     <>
       {/* Donde estoy */}
-      <div className="glass pointer-events-none absolute left-3 top-[4.25rem] z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-full px-4 py-2 text-sm md:max-w-[calc(100%-17rem)]">
+      <div className="glass pointer-events-none absolute left-3 top-[var(--hud-top)] z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-full px-4 py-2 text-sm md:max-w-[calc(100%-17rem)]">
         <span className="font-semibold text-fg">{label}</span>
         {climate && (
           <>
@@ -188,7 +188,7 @@ export function WalkHud() {
 
       {/* Puerta al frente */}
       {hint && (
-        <div className="glass pointer-events-none absolute bottom-24 left-1/2 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-medium text-fg md:left-[calc((100%-14rem)/2)] md:max-w-[calc(100%-16rem)] lg:bottom-20">
+        <div className="glass pointer-events-none absolute bottom-24 left-1/2 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-medium text-fg md:left-[calc((100%-var(--hud-right)+0.75rem)/2)] md:max-w-[calc(100%-var(--hud-right)-16rem)] lg:bottom-20">
           <kbd className="rounded-md border border-line bg-raised px-2 py-0.5 text-xs font-bold text-brand-strong">E</kbd>
           {hintOpen ? <DoorOpen size={16} className="text-warm-strong" /> : <DoorClosed size={16} className="text-mute" />}
           <span className="min-w-0 truncate">
@@ -198,7 +198,7 @@ export function WalkHud() {
       )}
 
       {/* Ir a otra habitacion */}
-      <div className="glass absolute right-3 top-[4.25rem] z-30 hidden max-w-[15rem] flex-col gap-1.5 rounded-xl p-1.5 md:flex">
+      <div className="glass absolute right-[var(--hud-right)] top-[var(--hud-top)] z-30 hidden max-w-[15rem] flex-col gap-1.5 rounded-xl p-1.5 md:flex">
         <button
           type="button"
           onClick={() => setPlaces((v) => !v)}
@@ -228,7 +228,7 @@ export function WalkHud() {
       </div>
 
       {/* Mini-mapa y ayuda */}
-      <div className="glass absolute bottom-3 right-3 z-30 hidden flex-col gap-2 rounded-xl p-2.5 md:flex">
+      <div className="glass absolute bottom-20 right-[var(--hud-right)] z-30 hidden flex-col gap-2 rounded-xl p-2.5 md:flex">
         <MiniMap />
         <p className="max-w-[196px] text-xs leading-snug text-mute">
           <b className="text-fg">W A S D</b> o flechas: caminar · <b className="text-fg">arrastra</b>: mirar · <b className="text-fg">Shift</b>: correr ·{' '}

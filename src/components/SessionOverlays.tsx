@@ -31,7 +31,7 @@ function Modal({ title, icon, onClose, children }: { title: string; icon: ReactN
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-fg/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div ref={box} role="dialog" aria-modal="true" aria-label={title} className="card w-full max-w-md p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -51,6 +51,7 @@ function Modal({ title, icon, onClose, children }: { title: string; icon: ReactN
 
 function PairDialog() {
   const role = useSessionStore((s) => s.role)
+  const user = useSessionStore((s) => s.user)
   const pairing = useSessionStore((s) => s.pairing)
   const error = useSessionStore((s) => s.pairError)
   const close = useSessionStore((s) => s.closeDialog)
@@ -66,11 +67,17 @@ function PairDialog() {
   }
 
   // Ya emparejada: se muestra el rol y se puede cerrar la sesión de control (o revocar las demás)
-  if (role !== 'lector') {
+  if (role !== 'lector' || user) {
     return (
       <Modal title="Sesión emparejada" icon={<KeyRound size={18} className="text-brand-strong" />} onClose={close}>
         <p className="text-sm">
-          Esta pantalla actúa como <strong>{ROLE_LABEL[role]}</strong>.
+          Esta pantalla actúa como <strong>{ROLE_LABEL[role]}</strong>
+          {user && (
+            <>
+              {' '}con el usuario <strong>{user}</strong> (queda en la auditoría)
+            </>
+          )}
+          .
         </p>
         <p className="mt-1 text-xs text-mute">{ROLE_HELP[role]}</p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -83,7 +90,7 @@ function PairDialog() {
             }}
             className="flex items-center gap-2 rounded-xl border border-line bg-panel px-3.5 py-2 text-sm font-semibold hover:border-brand"
           >
-            <LogOut size={15} /> Volver a solo lectura
+            <LogOut size={15} /> Cerrar sesión (vista pública)
           </button>
           {role === 'administrador' && (
             <button
@@ -107,8 +114,8 @@ function PairDialog() {
     <Modal title="Emparejar esta pantalla" icon={<KeyRound size={18} className="text-brand-strong" />} onClose={close}>
       <form onSubmit={submit}>
         <p className="text-xs text-mute">
-          Aquí no hay usuarios ni contraseñas personales: la <strong>clave de emparejamiento</strong> la define quien administra el servidor y decide
-          qué rol recibe esta pantalla (Operador o Administrador). Se guarda solo en esta pestaña.
+          Pega tu <strong>clave personal</strong> (la que te dio quien administra el servidor) o una clave compartida. El servidor decide qué rol
+          recibe esta pantalla y anota tu nombre en la auditoría. Se guarda solo en esta pestaña.
         </p>
         <label className="mt-3 block text-xs font-semibold" htmlFor="pair-key">
           Clave de emparejamiento
@@ -139,7 +146,7 @@ function PairDialog() {
           <button
             type="submit"
             disabled={!key.trim() || pairing}
-            className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-50"
+            className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/85 disabled:opacity-50"
           >
             {pairing ? 'Comprobando…' : 'Emparejar'}
           </button>
@@ -195,7 +202,7 @@ function ConfirmDialog({ c, total }: { c: PendingConfirm; total: number }) {
             telemetry.confirm(c.code)
             drop(c.code)
           }}
-          className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong"
+          className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/85"
         >
           Confirmar
         </button>

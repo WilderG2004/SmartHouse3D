@@ -8,16 +8,17 @@
  *        local:       ws://localhost:1880/ws/casa-iot
  *        desplegado:  wss://tu-backend.ejemplo.com/ws/casa-iot   (una página https NO puede abrir ws://: contenido mixto)
  *
- * SESIÓN (identidad de la pantalla, no de una persona; no hay usuarios ni contraseñas):
- *   - Toda conexión nueva es «lector»: ve los datos pero el servidor rechaza sus órdenes.
- *   - Con la clave de emparejamiento (la define quien administra el servidor) pasa a «operador» o «administrador».
- *   - La clave se guarda SOLO en sessionStorage (esta pestaña) y se vuelve a enviar al reconectar. Nunca se pone en un
- *     VITE_… (quedaría visible para cualquiera en el código descargado) ni se escribe en el registro.
+ * SESIÓN:
+ *   - Toda conexión nueva es ANÓNIMA («lector» sin usuario): ve un estado reducido (sin alarma, movimiento, puertas,
+ *     eventos ni alertas) y el servidor rechaza sus órdenes.
+ *   - Con la clave de un usuario (CASA_USERS) o una compartida pasa a su rol y el servidor manda el estado completo.
+ *   - La clave se guarda SOLO en sessionStorage (esta pestaña, ver pairingKey.ts) y se vuelve a enviar al reconectar.
+ *     Nunca se pone en un VITE_… (quedaría visible para cualquiera en el código descargado) ni se escribe en el registro.
  *   - Si el servidor te baja de rol (revocación) o la clave deja de valer, la interfaz se limita a reflejarlo.
  *
  * Protocolo (JSON, un objeto por mensaje WebSocket):
  *   - Node-RED → frontend: cualquier TelemetryMessage de src/types/iot.ts, más los mensajes de sesión
- *       {"type":"session","role":"operador"}  ·  {"type":"confirm","code":"3f9a1c02","kind":"security.set","summary":"Desarmar la alarma","ttlMs":15000}
+ *       {"type":"session","role":"operador","user":"ana"}  ·  {"type":"confirm","code":"3f9a1c02","kind":"security.set","summary":"Desarmar la alarma","ttlMs":15000}
  *       {"type":"reject","kind":"light.set","reason":"forbidden","need":"operador"}
  *   - frontend → Node-RED: cualquier DeviceCommand, más
  *       {"kind":"session.hello","key":"…"} · {"kind":"session.logout"} · {"kind":"confirm","code":"…"} · {"kind":"admin.revoke"}
@@ -25,24 +26,10 @@
  * Si tus mensajes de Node-RED tienen otra forma, tradúcelos en `normalize()`.
  */
 import type { DeviceCommand } from '../../types/iot'
+import { pairingKey as keyStore } from './pairingKey'
 import { BaseAdapter, type AdapterMessage } from './TelemetryAdapter'
 
 const WS_URL = import.meta.env.VITE_NODERED_WS_URL ?? 'ws://localhost:1880/ws/casa-iot'
-const KEY_STORE = 'casa.pairingKey'
-
-/** sessionStorage puede no estar disponible (modo privado, bloqueado): la pantalla debe seguir funcionando sin él. */
-const keyStore = {
-  get(): string | null {
-    try { return sessionStorage.getItem(KEY_STORE) } catch { return null }
-  },
-  set(k: string) {
-    try { sessionStorage.setItem(KEY_STORE, k) } catch { /* sin almacenamiento: la clave no sobrevive a recargar */ }
-  },
-  clear() {
-    try { sessionStorage.removeItem(KEY_STORE) } catch { /* nada */ }
-  },
-}
-
 const SECURE = WS_URL.startsWith('wss://')
 /** Una página https no puede abrir ws:// (el navegador lo bloquea): se avisa en vez de fallar en silencio. */
 const MIXED_CONTENT = !SECURE && typeof location !== 'undefined' && location.protocol === 'https:'
@@ -86,7 +73,7 @@ export class WebSocketAdapter extends BaseAdapter {
       try {
         const msg = this.normalize(JSON.parse(String(ev.data)))
         if (!msg) return
-        if (msg.type === 'session' && this.pendingKey && msg.role !== 'lector') {
+        if (msg.type === 'session' && this.pendingKey && (msg.role !== 'lector' || msg.user)) {
           keyStore.set(this.pendingKey) // el servidor la aceptó: ahora sí se recuerda en esta pestaña
           this.pendingKey = null
         }

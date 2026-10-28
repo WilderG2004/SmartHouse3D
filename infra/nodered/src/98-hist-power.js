@@ -1,7 +1,9 @@
 // @name Consulta Flux · potencia
 // @kind plain
-// @uses range
-// GET /api/history/power?from=<ms>&to=<ms>&bucket=<seg>
+// @uses crypto,cors,auth,range
+// @outputs 2
+// GET /api/history/power?from=<ms>&to=<ms>&bucket=<seg>   (Authorization: Bearer <clave de usuario>)
+if (denyApi(msg)) return [null, msg];   // sin clave válida: 401 (o 429 si hay demasiados intentos)
 const r = parseRange(msg.req.query);
 msg._t0 = Date.now();
 msg._route = '/history/power';
@@ -14,4 +16,4 @@ msg.query = `from(bucket: "${B}")
   |> aggregateWindow(every: ${r.every}s, fn: mean, createEmpty: false)
   |> group()
   |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")`;
-return msg;
+return [msg, null];

@@ -10,10 +10,12 @@ global.set('cfg', cfg);
 // ── Seguridad del canal (ver docs/seguridad-iot.md) ────────────────────────────────────────────
 // La POLÍTICA (qué rol puede qué, límites, esquemas) viene generada y no contiene secretos.
 // Las CLAVES salen de variables de entorno y NUNCA se guardan en el repositorio:
-//   CASA_PAIRING_KEY  clave de emparejamiento del rol Operador      (control de luces, aires, enchufes, puertas, escenas)
-//   CASA_ADMIN_KEY    clave del rol Administrador                    (simulaciones, hora simulada, revocar sesiones)
+//   CASA_USERS        claves POR PERSONA: «alias:rol:clave,alias:rol:clave» (rol = lector | operador | administrador).
+//                     La auditoría guarda el alias de quien hizo cada cosa. Un «lector» con clave ve todo pero no manda.
+//   CASA_PAIRING_KEY  clave COMPARTIDA del rol Operador      (alias de auditoría «compartida-operador»)
+//   CASA_ADMIN_KEY    clave COMPARTIDA del rol Administrador (alias «compartida-admin»)
 //   CASA_DEVICE_KEY   clave maestra de la que se derivan las claves de cada dispositivo simulado (firmas HMAC)
-//   *_PREVIOUS        la clave anterior, solo durante una rotación (se aceptan las dos a la vez)
+//   *_PREVIOUS        la clave compartida anterior, solo durante una rotación (se aceptan las dos a la vez)
 // Si falta alguna, se crea una TEMPORAL solo para esta ejecución (modo desarrollo) y se muestra en el registro de Node-RED.
 // «Reiniciar simulación» NO cambia claves ni desconecta sesiones: el runtime de seguridad se crea una sola vez.
 const sec = __SEC__;
@@ -30,7 +32,7 @@ if (!global.get('secRt')) {
     temporales.push(label + ': ' + t);
     return { value: t, temporal: true };
   };
-  const previa = (name) => { const v = String(env.get(name) || '').trim(); return v.length >= MIN ? [sha(v)] : []; };
+  const previa = (name) => { const v = String(env.get(name) || '').trim(); return v.length >= MIN ? v : null; };
   const op = leer('CASA_PAIRING_KEY', 'clave de OPERADOR (emparejamiento)');
   const ad = leer('CASA_ADMIN_KEY', 'clave de ADMINISTRADOR');
   const dk = leer('CASA_DEVICE_KEY', 'clave de dispositivos');
@@ -47,8 +49,31 @@ if (!global.get('secRt')) {
   // de Node-RED (GET /context/global/secRt), que de otro modo devolvería la clave maestra a quien llegue al editor.
   // (El editor debe estar protegido con adminAuth igualmente: ver settings.js.)
   const oculto = (k, v) => Object.defineProperty(rt, k, { value: v, enumerable: false, writable: true, configurable: true });
-  // Solo se guardan resúmenes SHA-256 de las claves de emparejamiento: la clave en texto no queda en memoria.
-  oculto('keys', { operador: [sha(op.value)].concat(previa('CASA_PAIRING_KEY_PREVIOUS')), administrador: [sha(ad.value)].concat(previa('CASA_ADMIN_KEY_PREVIOUS')) });
+  // Usuarios que pueden emparejar: { alias, rank, hash }. Solo se guardan resúmenes SHA-256: la clave en texto no queda en memoria.
+  const RANGO = { lector: 0, operador: 1, administrador: 2 };
+  const users = [];
+  const agregar = (alias, rank, clave) => {
+    const hash = sha(clave);
+    if (users.some((u) => u.hash === hash)) { node.warn('[Seguridad IoT] La clave de «' + alias + '» repite la de otro usuario: se ignora (cada persona necesita la suya).'); return; }
+    users.push({ alias, rank, hash });
+  };
+  agregar('compartida-operador', 1, op.value);
+  agregar('compartida-admin', 2, ad.value);
+  const opPrev = previa('CASA_PAIRING_KEY_PREVIOUS'), adPrev = previa('CASA_ADMIN_KEY_PREVIOUS');
+  if (opPrev) agregar('compartida-operador', 1, opPrev);
+  if (adPrev) agregar('compartida-admin', 2, adPrev);
+  String(env.get('CASA_USERS') || '').split(',').map((x) => x.trim()).filter(Boolean).forEach((item, n) => {
+    const i = item.indexOf(':'), j = i > 0 ? item.indexOf(':', i + 1) : -1;
+    const alias = i > 0 ? item.slice(0, i) : '', rol = j > 0 ? item.slice(i + 1, j) : '', clave = j > 0 ? item.slice(j + 1) : '';
+    // El aviso nunca incluye la clave: solo el número de la entrada
+    if (!/^[A-Za-z0-9._-]{1,32}$/.test(alias) || !Object.prototype.hasOwnProperty.call(RANGO, rol) || clave.length < MIN) {
+      node.warn('[Seguridad IoT] CASA_USERS: la entrada n.º ' + (n + 1) + ' se ignora (formato alias:rol:clave · rol lector|operador|administrador · clave de ' + MIN + '+ caracteres).');
+      return;
+    }
+    if (users.some((u) => u.alias === alias)) { node.warn('[Seguridad IoT] CASA_USERS: el alias «' + alias + '» está repetido: se ignora la entrada n.º ' + (n + 1) + '.'); return; }
+    agregar(alias, RANGO[rol], clave);
+  });
+  oculto('users', users);
   oculto('master', Buffer.from(dk.value, 'utf8'));
   oculto('devKeys', {});
   oculto('intKey', null);

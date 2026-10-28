@@ -107,6 +107,9 @@ function AcUnit({ def, position }: { def: AcDef; position: THREE.Vector3 }) {
 }
 
 export function AcLayer({ markers }: { markers: Markers }) {
+  // Vista pública: un aire encendido delata a la persona (el servidor ni siquiera manda su estado)
+  const restricted = useHouseStore((s) => s.restricted)
+  if (restricted) return null
   return (
     <>
       {AIR_CONDITIONERS.map((def) => {

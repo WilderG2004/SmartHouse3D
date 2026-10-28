@@ -21,7 +21,8 @@
  *   --org            nombre de la organización (si solo hay una, se detecta) (INFLUX_ORG)
  *   --bucket         Casa_IoT  (distingue mayúsculas y minúsculas)       (INFLUX_BUCKET)
  *   --integrity-bucket  <bucket>_integridad  (huellas de integridad)      (INFLUX_INTEGRITY_BUCKET)
- *   --retention-days 30 (0 = sin límite)
+ *   --retention-days 30 (0 = sin límite)   también se aplica si el bucket ya existía   (INFLUX_RETENTION_DAYS)
+ *   --integrity-retention-days 90 (huellas; por defecto 3 × la de los datos)       (INFLUX_INTEGRITY_RETENTION_DAYS)
  *   --nodered        http://localhost:1880                               (NODERED_URL)
  *   --nodered-user / --nodered-pass   usuario y contraseña del EDITOR (adminAuth). Con el settings.js endurecido del
  *                    proyecto son obligatorios (NODERED_USER / NODERED_PASS); el usuario por defecto es «admin»
@@ -55,6 +56,7 @@ const INFLUX_URL = opt('influx-url', 'INFLUX_URL', 'https://us-east-1-1.aws.clou
 const NR_URL = opt('nodered', 'NODERED_URL', 'http://localhost:1880').replace(/\/$/, '')
 const BUCKET = opt('bucket', 'INFLUX_BUCKET', 'Casa_IoT')
 const RETENTION_DAYS = Number(opt('retention-days', 'INFLUX_RETENTION_DAYS', '30'))
+const INTEGRITY_RETENTION_DAYS = Number(opt('integrity-retention-days', 'INFLUX_INTEGRITY_RETENTION_DAYS', String(RETENTION_DAYS > 0 ? RETENTION_DAYS * 3 : 0)))
 const DRY = !!args['dry-run']
 const VERIFY_ONLY = !!args['verify-only']
 const VERIFY_TIMEOUT_S = Number(opt('verify-timeout', 'VERIFY_TIMEOUT_S', '60'))
@@ -169,7 +171,20 @@ if (!VERIFY_ONLY) {
 step(`2/5  Buckets «${BUCKET}» y «${INTEGRITY_BUCKET}», y tokens separados`)
 async function asegurarBucket(nombre, retencionDias) {
   const r = await influx(`/api/v2/buckets?name=${encodeURIComponent(nombre)}&orgID=${org.id}`)
-  if (r.ok && r.json?.buckets?.length) { ok(`El bucket «${nombre}» ya existe`); return r.json.buckets[0].id }
+  if (r.ok && r.json?.buckets?.length) {
+    const b = r.json.buckets[0]
+    // Ya existe: se ajusta su retención si no es la pedida (guardar solo lo necesario también es privacidad)
+    const actual = b.retentionRules?.find((x) => x.type === 'expire')?.everySeconds ?? 0
+    const nuevo = retencionDias > 0 ? retencionDias * 86400 : 0
+    if (actual === nuevo) ok(`El bucket «${nombre}» ya existe (retención ${retencionDias > 0 ? retencionDias + ' días' : 'sin límite'})`)
+    else if (DRY) note(`(dry-run) el bucket «${nombre}» ya existe; cambiaría su retención a ${retencionDias || '∞'} días`)
+    else {
+      const p = await influx(`/api/v2/buckets/${b.id}`, { method: 'PATCH', ...jsonBody({ retentionRules: nuevo ? [{ type: 'expire', everySeconds: nuevo }] : [] }) })
+      if (p.ok) ok(`El bucket «${nombre}» ya existe: retención ajustada a ${retencionDias > 0 ? retencionDias + ' días' : 'sin límite'}`)
+      else warn(`No se pudo ajustar la retención de «${nombre}» (HTTP ${p.status}): ${String(p.json?.message ?? p.text).slice(0, 160)}`)
+    }
+    return b.id
+  }
   if (r.status !== 404 && !r.ok) die(`No se pudo consultar el bucket «${nombre}» (HTTP ${r.status}).`, r.text.slice(0, 200))
   if (DRY) { note(`(dry-run) crearía el bucket «${nombre}» con retención de ${retencionDias || '∞'} días`); return null }
   const c = await influx('/api/v2/buckets', {
@@ -183,7 +198,7 @@ async function asegurarBucket(nombre, retencionDias) {
 }
 const bucketId = await asegurarBucket(BUCKET, RETENTION_DAYS)
 // las huellas viven más que los datos: así se puede comprobar qué pasó aunque los datos viejos ya hayan expirado
-const integrityId = await asegurarBucket(INTEGRITY_BUCKET, RETENTION_DAYS > 0 ? RETENTION_DAYS * 3 : 0)
+const integrityId = await asegurarBucket(INTEGRITY_BUCKET, INTEGRITY_RETENTION_DAYS)
 
 let writeToken = adminToken
 let readToken = adminToken

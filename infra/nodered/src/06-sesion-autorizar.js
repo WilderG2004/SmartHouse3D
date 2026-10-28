@@ -7,10 +7,13 @@
 //   Salida 2 → respuesta SOLO a ese cliente (msg._session): sesión, confirmación pedida o rechazo
 //   Salida 3 → registros de auditoría (medición «audit» de InfluxDB)
 //
-// IDENTIDAD DE SESIÓN, NO DE PERSONA (no hay cuentas ni contraseñas de usuario):
-//   lector         → cualquier conexión nueva. Solo ve datos. Es lo que ve el público de Vercel.
-//   operador       → sesión emparejada con CASA_PAIRING_KEY: luces, aires, enchufes, puertas, escenas, armar la alarma.
-//   administrador  → sesión emparejada con CASA_ADMIN_KEY: además, simulaciones, hora simulada y revocar sesiones.
+// IDENTIDAD: cada sesión empieza ANÓNIMA y se empareja con la clave de un usuario (CASA_USERS: alias:rol:clave) o con una
+// clave compartida (CASA_PAIRING_KEY / CASA_ADMIN_KEY, alias «compartida-…»). El alias queda en la sesión (S.user) y en
+// cada registro de auditoría, así se sabe QUIÉN abrió una puerta o desarmó la alarma.
+//   lector         → conexión anónima: solo ve el estado REDUCIDO (sin alarma, movimiento, puertas, eventos ni alertas).
+//                    Un usuario con rol lector y clave propia ve el estado completo, pero tampoco manda órdenes.
+//   operador       → luces, aires, enchufes, puertas, escenas, armar la alarma.
+//   administrador  → además, simulaciones, hora simulada y revocar sesiones.
 // Acciones sensibles (desarmar la alarma, abrir una puerta del perímetro, escenas que desarman) piden CONFIRMACIÓN en
 // dos pasos: el servidor responde con un código de un solo uso (15 s, ligado a esta sesión) y solo ejecuta cuando
 // vuelve ese código en un mensaje «confirm».
@@ -26,23 +29,25 @@ const NAME = SEC.roles;
 const key = (msg._session && msg._session.id) || 'sin-sesion';
 const short = (v) => sha256Hex(String(v)).slice(0, 8);   // nunca se guarda el id de sesión completo
 const toOut = [], replies = [], audits = [];
+// Pide un snapshot para UNA sesión: «Filtrar por sesión y serializar» lo manda completo o reducido según su identidad
+const snapshotFor = (session) => toOut.push({ payload: { kind: 'snapshot.request' }, _session: session });
 const reply = (payload) => { if (msg._session) replies.push({ payload, _session: msg._session }); };
 const fin = () => [toOut.length ? toOut : null, replies.length ? replies : null, audits.length ? audits : null];
 
 // ── mantenimiento barato (cada minuto) ──
 if (now - RT.lastPrune > 60000) {
   RT.lastPrune = now;
-  for (const k of Object.keys(RT.sessions)) if (now - RT.sessions[k].last > 3600000) delete RT.sessions[k];
+  for (const k of Object.keys(RT.sessions)) if (now - RT.sessions[k].last > (RT.sessions[k].user ? L.authedIdleMs : L.sessionIdleMs)) delete RT.sessions[k];
   for (const c of Object.keys(RT.pending)) if (RT.pending[c].exp < now) delete RT.pending[c];
   RT.helloFails = RT.helloFails.filter((t) => now - t < L.helloGlobalWindowMs);
 }
 
 let S = RT.sessions[key];
-if (!S) S = RT.sessions[key] = { rank: 0, since: now, last: now, fails: 0, lockedUntil: 0, tokens: L.readBucket.cap, ts: now };
+if (!S) S = RT.sessions[key] = { rank: 0, user: null, since: now, last: now, fails: 0, lockedUntil: 0, tokens: L.readBucket.cap, ts: now };
 S.last = now;
 
 const rec = (result, reason, kind, id, extra) =>
-  audits.push({ payload: Object.assign({ result, reason, kind: String(kind || '?').slice(0, 40), id: id ? String(id).slice(0, 60) : '', role: NAME[S.rank], sid: short(key) }, extra || {}) });
+  audits.push({ payload: Object.assign({ result, reason, kind: String(kind || '?').slice(0, 40), id: id ? String(id).slice(0, 60) : '', role: NAME[S.rank], user: S.user || '', sid: short(key) }, extra || {}) });
 const reject = (reason, kind, id, extra) => {
   RT.stats.rejected++;
   rec('rejected', reason, kind, id, extra);
@@ -76,40 +81,44 @@ if (kind === 'session.hello') {
   if (S.lockedUntil > now || RT.helloFails.length >= L.helloGlobalMax) return reject('locked', kind);
   const k = cmd.key;
   const h = typeof k === 'string' && k.length >= 8 && k.length <= 128 ? sha256Hex(k) : null;
-  const matches = (list) => list.map((x) => (h ? ctEq(x, h) : false)).includes(true);   // sin cortocircuito: no filtra por tiempo
-  const rank = matches(RT.keys.administrador) ? 2 : matches(RT.keys.operador) ? 1 : 0;
-  if (!rank) {
+  let found = null;
+  for (const u of RT.users) { const ok = h ? ctEq(u.hash, h) : false; if (ok && !found) found = u; }   // recorre todos: no filtra por tiempo
+  if (!found) {
     S.fails++; RT.helloFails.push(now);
     if (S.fails >= L.helloFailMax) { S.lockedUntil = now + L.helloLockMs; S.fails = 0; }
     return reject('bad_key', kind);
   }
-  S.rank = rank; S.fails = 0; S.since = now;
+  S.rank = found.rank; S.user = found.alias; S.fails = 0; S.since = now;
   RT.stats.accepted++;
   rec('accepted', 'paired', kind);
-  reply({ type: 'session', role: NAME[rank] });
+  reply({ type: 'session', role: NAME[S.rank], user: S.user });
+  snapshotFor(msg._session);   // ahora sí recibe el estado completo
   return fin();
 }
 if (kind === 'session.logout') {
-  S.rank = 0;
+  rec('accepted', 'logout', kind);   // antes de olvidar al usuario, para que la auditoría diga quién salió
+  S.rank = 0; S.user = null;
   for (const c of Object.keys(RT.pending)) if (RT.pending[c].sid === key) delete RT.pending[c];
   RT.stats.accepted++;
-  rec('accepted', 'logout', kind);
   reply({ type: 'session', role: NAME[0] });
+  snapshotFor(msg._session);   // vuelve al estado reducido: la pantalla deja de ver lo sensible
   return fin();
 }
 if (kind === 'admin.revoke') {
   let n = 0;
   for (const k of Object.keys(RT.sessions)) {
-    if (k !== key && RT.sessions[k].rank > 0) {
-      RT.sessions[k].rank = 0; n++;
-      replies.push({ payload: { type: 'session', role: NAME[0], revoked: true }, _session: { type: 'websocket', id: k } });
+    if (k !== key && (RT.sessions[k].rank > 0 || RT.sessions[k].user)) {
+      RT.sessions[k].rank = 0; RT.sessions[k].user = null; n++;
+      const other = { type: 'websocket', id: k };
+      replies.push({ payload: { type: 'session', role: NAME[0], revoked: true }, _session: other });
+      snapshotFor(other);
     }
   }
   for (const c of Object.keys(RT.pending)) if (RT.pending[c].sid !== key) delete RT.pending[c];
   RT.frozenUntil = now + L.freezeMs;
   RT.stats.accepted++;
   rec('accepted', 'revoked', kind, '', { count: n });
-  reply({ type: 'session', role: NAME[S.rank], note: 'revocadas ' + n });
+  reply({ type: 'session', role: NAME[S.rank], user: S.user, note: 'revocadas ' + n });
   toOut.push({ payload: { kind: 'security.notice', level: 'warning', message: 'Sesiones de control revocadas (' + n + ') · emparejamiento congelado ' + Math.round(L.freezeMs / 60000) + ' min' } });
   return fin();
 }

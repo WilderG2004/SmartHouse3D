@@ -30,12 +30,14 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import {
   AIR_CONDITIONERS,
   ALERTS,
   CLIMATE,
   DOORS,
   LIGHTS,
+  LIGHT_PRESETS,
   PIRS,
   PIR_HOLD_MS,
   PLUGS,
@@ -52,7 +54,7 @@ import { PLUG_ICONS } from '../lib/icons'
 import { useHouseStore } from '../store/useHouseStore'
 import { useUiStore } from '../store/useUiStore'
 import type { AcFan, AcMode, SecurityMode } from '../types/iot'
-import { ReadOnlyBanner, RoleTag } from './Session'
+import { HiddenNote, ReadOnlyBanner, RoleTag } from './Session'
 import { GhostButton, SectionTitle, Segmented, Switch } from './ui'
 
 /** Boton secundario: blanco con borde suave. Al pasar el mouse cambia de color segun lo que hace (rojo = peligro, etc.). */
@@ -89,7 +91,7 @@ function SimulationSection() {
           type="button"
           onClick={() => commands.simulatePir(primary.id)}
           className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition-colors ${
-            motion ? 'bg-cool-strong text-white' : `${SOFT_BTN} hover:border-cool hover:bg-cool-soft`
+            motion ? 'bg-cool text-slate-950' : `${SOFT_BTN} hover:border-cool hover:bg-cool-soft`
           }`}
         >
           <span className="flex items-center gap-2.5">
@@ -127,6 +129,7 @@ function SimulationSection() {
 function SensorsSection() {
   const smoke = useHouseStore((s) => s.smoke)
   const pir = useHouseStore((s) => s.pir)
+  const restricted = useHouseStore((s) => s.restricted)
   const canSimulate = useCan('pir.simulate')
 
   return (
@@ -141,7 +144,12 @@ function SensorsSection() {
           </span>
         </li>
 
-        {PIRS.map((p) => {
+        {restricted && (
+          <li className="p-2">
+            <HiddenNote what="El movimiento de los detectores" />
+          </li>
+        )}
+        {!restricted && PIRS.map((p) => {
           const active = pir[p.id]?.motion
           return (
             <li key={p.id} className="flex items-center gap-3 px-3.5 py-3 text-sm">
@@ -173,8 +181,18 @@ function SensorsSection() {
 
 function DoorsSection() {
   const doors = useHouseStore((s) => s.doors)
+  const restricted = useHouseStore((s) => s.restricted)
   const openCount = DOORS.filter((d) => doors[d.id]?.open).length
   const setAll = (open: boolean) => DOORS.forEach((d) => commands.setDoor(d.id, open))
+
+  if (restricted) {
+    return (
+      <section>
+        <SectionTitle>Puertas</SectionTitle>
+        <HiddenNote what="El estado de las puertas" />
+      </section>
+    )
+  }
 
   return (
     <section>
@@ -245,12 +263,85 @@ function LightRow({ id, label }: { id: string; label: string }) {
   )
 }
 
+type LightPatch = Parameters<typeof commands.setLight>[1]
+
+/** Una orden `light.set` por luz (el mismo canal autorizado de siempre; el servidor valida cada una). */
+const setLights = (ids: string[], patch: LightPatch) => ids.forEach((id) => commands.setLight(id, patch))
+
+/** Tonos rápidos: cálida 3000 K, fría 6000 K, alerta. Encienden y cambian el color de esas luces. */
+function PresetDots({ ids, scope }: { ids: string[]; scope: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {LIGHT_PRESETS.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => setLights(ids, { on: true, color: p.color })}
+          title={`${scope}: luz ${p.label.toLowerCase()} (${p.hint})`}
+          aria-label={`${scope}: luz ${p.label.toLowerCase()}`}
+          className="h-5 w-5 rounded-full ring-1 ring-white/25 transition-transform hover:scale-110"
+          style={{ background: p.color, boxShadow: `0 0 10px ${p.color}66` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** Cabecera de una zona: cuántas encendidas, tonos rápidos, intensidad común y un interruptor para todas. */
+function ZoneHeader({ room }: { room: string }) {
+  const ids = LIGHTS.filter((l) => l.room === room).map((l) => l.id)
+  // useShallow: el selector arma un arreglo nuevo cada vez; sin comparar por contenido React volveria a dibujar sin fin
+  const zone = useHouseStore(useShallow((s) => ids.map((id) => s.lights[id]).filter(Boolean)))
+  const on = zone.filter((l) => l.on).length
+  const avg = Math.round(zone.reduce((a, l) => a + (l.on ? l.intensity : 0), 0) / Math.max(1, on))
+
+  return (
+    <div className="mb-1.5 space-y-2 px-1">
+      <div className="flex items-center gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-mute">{room}</h3>
+        <span className={`text-xs font-semibold ${on ? 'text-warm-strong' : 'text-mute'}`}>
+          {on}/{ids.length}
+        </span>
+        <div className="ml-auto flex items-center gap-2.5">
+          <PresetDots ids={ids} scope={room} />
+          <Switch checked={on > 0} onChange={(v) => setLights(ids, { on: v })} label={`Encender toda la zona ${room}`} />
+        </div>
+      </div>
+      {ids.length > 1 && on > 0 && (
+        <label className="flex items-center gap-3 text-xs text-mute">
+          <span className="w-16 shrink-0">Zona</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={avg}
+            onChange={(e) => setLights(ids, { intensity: Number(e.target.value) })}
+            aria-label={`Intensidad de la zona ${room}`}
+          />
+          <span className="w-10 text-right font-medium">{avg}%</span>
+        </label>
+      )}
+    </div>
+  )
+}
+
 function LightsSection() {
   const lights = useHouseStore((s) => s.lights)
+  const restricted = useHouseStore((s) => s.restricted)
   const rooms = [...new Set(LIGHTS.map((l) => l.room))]
   const onCount = Object.values(lights).filter((l) => l.on).length
+  const allIds = LIGHTS.map((l) => l.id)
 
-  const setAll = (on: boolean) => LIGHTS.forEach((l) => commands.setLight(l.id, { on }))
+  const setAll = (on: boolean) => setLights(allIds, { on })
+
+  if (restricted) {
+    return (
+      <section>
+        <SectionTitle>Iluminación</SectionTitle>
+        <HiddenNote what="Qué luces están encendidas" />
+      </section>
+    )
+  }
 
   return (
     <section>
@@ -269,10 +360,15 @@ function LightsSection() {
         Iluminación <span className="font-medium text-mute">· {onCount} de {LIGHTS.length} encendidas</span>
       </SectionTitle>
 
+      <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5">
+        <span className="text-sm font-medium">Toda la casa</span>
+        <PresetDots ids={allIds} scope="Toda la casa" />
+      </div>
+
       <div className="space-y-4">
         {rooms.map((room) => (
           <div key={room}>
-            <h3 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-mute">{room}</h3>
+            <ZoneHeader room={room} />
             <ul className="divide-y divide-line card !rounded-xl !shadow-none">
               {LIGHTS.filter((l) => l.room === room).map((l) => (
                 <LightRow key={l.id} id={l.id} label={l.label} />
@@ -289,16 +385,19 @@ function LightsSection() {
 
 function ActiveAlerts() {
   const alerts = useHouseStore((s) => s.alerts)
+  const restricted = useHouseStore((s) => s.restricted)
   const list = Object.values(alerts).sort((a, b) => (a.level === b.level ? a.since - b.since : a.level === 'critical' ? -1 : 1))
 
   return (
     <section>
       <SectionTitle
-        aside={<span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${list.length ? 'bg-bad-soft text-bad-strong' : 'bg-ok-soft text-ok-strong'}`}>{list.length ? `${list.length} activa(s)` : 'todo normal'}</span>}
+        aside={restricted ? undefined : <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${list.length ? 'bg-bad-soft text-bad-strong' : 'bg-ok-soft text-ok-strong'}`}>{list.length ? `${list.length} activa(s)` : 'todo normal'}</span>}
       >
         Alertas
       </SectionTitle>
-      {list.length === 0 ? (
+      {restricted ? (
+        <HiddenNote what="La lista de alertas" />
+      ) : list.length === 0 ? (
         <div className="flex items-start gap-3 rounded-xl border border-ok/40 bg-ok-soft/60 px-3.5 py-3 text-xs text-mute">
           <ShieldCheck size={17} className="mt-0.5 shrink-0 text-ok-strong" />
           <span>
@@ -367,7 +466,17 @@ function ScenesSection() {
 
 function SecuritySection() {
   const sec = useHouseStore((s) => s.security)
+  const restricted = useHouseStore((s) => s.restricted)
   const canSimulate = useCan('security.simulateIntrusion')
+
+  if (restricted) {
+    return (
+      <section>
+        <SectionTitle>Seguridad</SectionTitle>
+        <HiddenNote what="El modo de la alarma" />
+      </section>
+    )
+  }
 
   return (
     <section>
@@ -540,7 +649,9 @@ function AcCard({ acId }: { acId: string }) {
 
 function ClimateSection() {
   const world = useHouseStore((s) => s.world)
-  const acRooms = new Set(AIR_CONDITIONERS.map((a) => a.room))
+  const restricted = useHouseStore((s) => s.restricted)
+  // En la vista pública los aires no se muestran (uno encendido delata a la persona): todas las habitaciones van en la lista
+  const acRooms = new Set(restricted ? [] : AIR_CONDITIONERS.map((a) => a.room))
   const others = ROOMS.filter((r) => !acRooms.has(r.id))
 
   return (
@@ -556,14 +667,18 @@ function ClimateSection() {
         Clima
       </SectionTitle>
 
-      <div className="space-y-3">
-        {AIR_CONDITIONERS.map((a) => (
-          <AcCard key={a.id} acId={a.id} />
-        ))}
-      </div>
+      {restricted ? (
+        <HiddenNote what="El estado de los aires acondicionados" />
+      ) : (
+        <div className="space-y-3">
+          {AIR_CONDITIONERS.map((a) => (
+            <AcCard key={a.id} acId={a.id} />
+          ))}
+        </div>
+      )}
 
       <div>
-        <h3 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-mute">Sin aire acondicionado</h3>
+        <h3 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-mute">{restricted ? 'Habitaciones' : 'Sin aire acondicionado'}</h3>
         <div className="divide-y divide-line card !rounded-xl !shadow-none overflow-hidden">
           {others.map((r) => (
             <RoomRow key={r.id} roomId={r.id} />
@@ -581,7 +696,17 @@ function ClimateSection() {
 
 function PlugsSection() {
   const plugs = useHouseStore((s) => s.plugs)
+  const restricted = useHouseStore((s) => s.restricted)
   const total = Object.values(plugs).reduce((a, p) => a + (p.on ? p.watts : 0), 0)
+
+  if (restricted) {
+    return (
+      <section>
+        <SectionTitle>Enchufes inteligentes</SectionTitle>
+        <HiddenNote what="Qué aparatos están encendidos y cuánto consumen" />
+      </section>
+    )
+  }
 
   return (
     <section>
@@ -638,7 +763,7 @@ export function ControlPanel() {
       <nav
         role="tablist"
         aria-label="Secciones del panel"
-        className="sticky top-0 z-10 flex gap-1 border-b border-line bg-canvas/90 px-3 py-2.5 backdrop-blur"
+        className="sticky top-0 z-10 flex gap-1 border-b border-line bg-slate-950/70 px-3 py-2.5 backdrop-blur-md"
       >
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
@@ -653,7 +778,7 @@ export function ControlPanel() {
           >
             <Icon size={17} />
             {label}
-            {id === 'inicio' && alarm && <span className="absolute right-2 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-bad" />}
+            {id === 'inicio' && alarm && <span className="absolute right-2 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-slate-900 bg-bad" />}
           </button>
         ))}
       </nav>

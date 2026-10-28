@@ -20,7 +20,7 @@
 
 | Archivo | La cajita | Que hace, en palabras simples |
 |---|---|---|
-| `00-inicializar.js` | Configuracion y estado inicial | **Prepara la casa.** Al arrancar (o al pulsar *Reiniciar simulacion*) anota los ajustes de la casa y deja todo en su estado inicial: luces, aires, enchufes, temperaturas... Avisa a la pantalla que empezo de nuevo. |
+| `00-inicializar.js` | Configuracion y estado inicial | **Prepara la casa.** Al arrancar (o al pulsar *Reiniciar simulacion*) anota los ajustes de la casa y deja todo en su estado inicial: luces, aires, enchufes, temperaturas... Avisa a la pantalla que empezo de nuevo. Tambien carga los **usuarios** que pueden emparejar: las claves personales de `CASA_USERS` (`alias:rol:clave`) y las compartidas (alias `compartida-operador` / `compartida-admin`); de las claves solo guarda su resumen SHA-256. |
 
 ## B - Ordenes que llegan de la pantalla
 
@@ -30,9 +30,9 @@ Las cajitas `86` y `87` (firma y validacion de telemetria) y `08`/`09` (auditori
 | Archivo | La cajita | Que hace, en palabras simples |
 |---|---|---|
 | `05-parsear-comando.js` | Parsear comando del WebSocket | **Lee el mensaje** que llega de la pantalla y comprueba que tenga sentido. Si es basura, lo descarta. |
-| `06-sesion-autorizar.js` | Autorizar sesion y validar comando | **La puerta unica de las ordenes.** Cada conexion es un *lector* hasta que se empareja con la clave (*operador* o *administrador*). Comprueba el rol minimo de cada tipo de mensaje, que solo vengan las claves permitidas, que el dispositivo exista y que los valores esten en rango; limita el tamano y la frecuencia; pide un **codigo de un solo uso** para las acciones sensibles (desarmar, abrir una puerta del perimetro, escenas que desarman); y responde solo a ese cliente. Nada pasa a las demas cajitas sin su permiso. Como es de tipo `plain`, lee los nombres de puertas y escenas con `global.get('cfg')` para el texto del cuadro de confirmacion. |
+| `06-sesion-autorizar.js` | Autorizar sesion y validar comando | **La puerta unica de las ordenes.** Cada conexion es **anonima** hasta que se empareja con la clave de un usuario: queda con su rol (*lector*, *operador* o *administrador*) y su **alias**, que se anota en cada registro de auditoria. Al emparejar o cerrar la sesion le manda el estado completo o el reducido. Comprueba el rol minimo de cada tipo de mensaje, que solo vengan las claves permitidas, que el dispositivo exista y que los valores esten en rango; limita el tamano y la frecuencia; pide un **codigo de un solo uso** para las acciones sensibles (desarmar, abrir una puerta del perimetro, escenas que desarman); y responde solo a ese cliente. Nada pasa a las demas cajitas sin su permiso. Como es de tipo `plain`, lee los nombres de puertas y escenas con `global.get('cfg')` para el texto del cuadro de confirmacion. |
 | `07-sesion-cerrar.js` | Olvidar sesion desconectada | **Borra la sesion** (y sus confirmaciones pendientes) cuando el cliente se desconecta: al volver, empieza otra vez como *lector*. |
-| `08-auditar.js` | Auditoria (InfluxDB + registro de eventos) | **Anota cada rechazo y cada accion sensible** en la medicion `audit` (sin claves ni mensajes completos) y avisa en el registro de eventos, con tope por segundo para que una inundacion no llene la base de datos. |
+| `08-auditar.js` | Auditoria (InfluxDB + registro de eventos) | **Anota cada rechazo y cada accion sensible** en la medicion `audit` (sin claves ni mensajes completos) y avisa en el registro de eventos, con tope por segundo para que una inundacion no llene la base de datos. Guarda el **alias del usuario** (campo `user`) de cada accion. |
 | `09-ingesta-recibir.js` | Recibir telemetria firmada (`POST /api/ingest`) | **Entrada para un dispositivo externo** (hoy el de prueba; manana, un ESP32). Apagada por defecto. Todo lo que llega pasa por el mismo validador que la telemetria interna. |
 | `10-luces.js` | Luces | **Enciende o apaga una luz**, o le cambia la intensidad o el color. Revisa que los valores sean validos. |
 | `20-puertas.js` | Puertas | **Abre o cierra una puerta.** Si es una puerta de la calle y se abre, avisa a la alarma por si la casa esta armada. |
@@ -55,7 +55,7 @@ Las cajitas `86` y `87` (firma y validacion de telemetria) y `08`/`09` (auditori
 | `93-energia-tick.js` | Potencia y energia (cada 1 s) | **El medidor de energia.** Suma lo que gasta la casa "de fondo" + luces + aires + enchufes (la lavadora, por ejemplo, gasta por ciclos) y va acumulando los kWh. |
 | `94-alertas.js` | Alertas (umbrales) | **El vigilante de limites.** Compara cada valor con su limite (humo, temperatura, humedad, consumo, intrusion) y levanta una alerta cuando se pasa. La apaga un poco **despues** de que baja, para que no parpadee. |
 | `86-firmar-telemetria.js` | Firmar telemetria (dispositivo simulado) | **Firma cada lectura** con la clave de su dispositivo (HMAC-SHA256), con marca de tiempo y numero de secuencia, antes de guardarla. |
-| `87-validar-telemetria.js` | Validar telemetria (firma, ventana, secuencia, esquema, anomalias) | **El unico camino hacia InfluxDB.** Rechaza firmas malas, mensajes viejos o repetidos y valores fuera de esquema o de rango; las lecturas fisicamente imposibles van a **cuarentena**. Al cerrar cada bloque de tiempo escribe una **huella** encadenada en un bucket aparte. |
+| `87-validar-telemetria.js` | Validar telemetria (firma, ventana, secuencia, esquema, anomalias) | **El unico camino hacia InfluxDB.** Rechaza firmas malas, mensajes viejos o repetidos y valores fuera de esquema o de rango; las lecturas fisicamente imposibles van a **cuarentena**. Al cerrar cada bloque de tiempo escribe una **huella** encadenada en un bucket aparte. Para los dispositivos externos (`/api/ingest`) recuerda **en disco** el ultimo numero de secuencia y rechaza lo firmado antes de arrancar: un reinicio no abre la puerta a reenviar mensajes capturados. |
 | `95-persistir.js` | Preparar lecturas para InfluxDB | **Prepara el "paquete" para el cuaderno.** Cada 2 segundos junta todas las medidas en un solo lote para guardarlas, y cuenta cuantos paquetes lleva enviados. |
 
 ## D - Salida
@@ -63,15 +63,15 @@ Las cajitas `86` y `87` (firma y validacion de telemetria) y `08`/`09` (auditori
 | Archivo | La cajita | Que hace, en palabras simples |
 |---|---|---|
 | `96-eventos-influx.js` | Guardar cambios de estado y eventos | **Anota lo que pasa en el momento**: cada luz que se enciende, puerta que se abre, movimiento detectado, cambio de alarma, alerta y evento del registro. |
-| `97-serializar.js` | Serializar a JSON | **Convierte el mensaje a texto** para poder enviarlo por la "llamada" con la pantalla. Si era para un solo cliente, solo se lo manda a el. |
+| `97-serializar.js` | Filtrar por sesion y serializar | **El filtro de privacidad.** Lo que dice si hay alguien en casa (modo de la alarma, movimiento, puertas, eventos, alertas, **luces y consumo**) solo sale hacia las pantallas **emparejadas**; una anonima recibe el estado reducido (`restricted: true`) y el clima **sin luminosidad** (version publica a todos y, enseguida, la completa a las emparejadas). Despues convierte el mensaje a texto y, si era para un solo cliente, solo se lo manda a el. |
 
 ## E - Historial (cuando la pantalla pide datos viejos)
 
 | Archivo | La cajita | Que hace, en palabras simples |
 |---|---|---|
-| `98-hist-power.js` | Consulta Flux - potencia | **Pregunta a InfluxDB** por el consumo de energia de un rango de tiempo. |
-| `98-hist-smoke.js` | Consulta Flux - humo | **Pregunta a InfluxDB** por el humo. |
-| `98-hist-clima.js` | Consulta Flux - temperatura | **Pregunta a InfluxDB** por la temperatura de una habitacion y la de afuera. Comprueba que el nombre de la habitacion sea seguro (solo letras, numeros y guion bajo). |
+| `98-hist-power.js` | Consulta Flux - potencia | **Pregunta a InfluxDB** por el consumo de energia de un rango de tiempo. Como todo `/api/history/*`, exige `Authorization: Bearer <clave de usuario>` (si no, 401). |
+| `98-hist-smoke.js` | Consulta Flux - humo | **Pregunta a InfluxDB** por el humo (exige clave, como el anterior). |
+| `98-hist-clima.js` | Consulta Flux - temperatura | **Pregunta a InfluxDB** por la temperatura de una habitacion y la de afuera (exige clave). Comprueba que el nombre de la habitacion sea seguro (solo letras, numeros y guion bajo). |
 | `99-hist-formato.js` | Dar formato a la respuesta | **Ordena la respuesta** de InfluxDB para que la pantalla la entienda, y cuenta cuantas consultas ha atendido. |
 | `99-error.js` | Error -> HTTP 502 | **Si InfluxDB no responde**, contesta con un aviso claro en lugar de quedarse colgado. |
 | `99-salud.js` | Estado del servicio | **Responde "estoy vivo"** en `/api/health`. Sirve para comprobar rapido que Node-RED funciona. |
@@ -101,6 +101,6 @@ Estas cuatro cajitas existen para **demostrar que los datos se guardan de verdad
   `tick` (se ejecuta cada segundo; deja pasar al siguiente), `expire` (cada segundo; termina cosas que vencieron) y `plain` (codigo libre, sin ayudas).
 - **Ojo con `plain`:** no trae el preambulo, asi que **no** existen `cfg`, `S`, `cmd`, `now`, `log()`… Si los necesitas, definelos tu (por ejemplo `const cfg = global.get('cfg') || {}`). Con `@uses crypto` solo recibe `SEC`, `RT`, `hmacHex`, `sha256Hex`, `ctEq`, `deviceKey`, `sortedPairs`, `canon` y `crypto`. Usar uno sin definir da `ReferenceError … is not defined` solo cuando esa rama se ejecuta (asi se perdian las confirmaciones de puertas y escenas).
 - **Variables disponibles** en los tipos `handler`, `security`, `tick` y `expire`: `cfg` (los ajustes de la casa), `S` (el estado de la simulacion), `cmd` (la orden recibida), `now` (la hora), `out` (datos a enviar), `cmds` (ordenes internas), y funciones como `log()` (anota un evento) y `done()` (guarda y termina).
-- **Ayudas opcionales:** `world` (hora, temperatura exterior, luz del dia) y `range` (leer el rango de tiempo de una consulta de historial: maximo 31 dias y unos 2000 puntos).
+- **Ayudas opcionales:** `world` (hora, temperatura exterior, luz del dia), `range` (leer el rango de tiempo de una consulta de historial: maximo 31 dias y unos 2000 puntos), `cors` (`apiHeaders`) y `auth` (`apiUser` / `denyApi`: exige `Authorization: Bearer <clave de usuario>`; necesita `@uses crypto,cors,auth` en ese orden).
 - **El estado `S`** tiene: luces, movimiento, puertas, humo, kWh, habitaciones (temperatura, humedad, luz), aires, enchufes, seguridad, hora forzada, ultimo consumo, eventos, eventos domesticos, alertas y contadores del pipeline.
 - **Mensajes que Node-RED envia a la pantalla:** `snapshot`, `light`, `door`, `pir`, `ac`, `plug`, `security`, `smoke`, `climate`, `power`, `alert`, `event` y `pipeline`. Su forma exacta esta en `src/types/iot.ts`.

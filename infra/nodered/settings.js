@@ -11,7 +11,7 @@
  *   NODERED_BIND                interfaz donde escucha (por defecto 127.0.0.1; en Docker, 0.0.0.0 dentro del contenedor
  *                               y el puerto se publica solo en 127.0.0.1 del anfitrión)
  *   NODERED_API_MAX             tamaño máximo de una petición HTTP (por defecto 1mb)
- *   + las variables CASA_* del control de handshake (ver seguridad-ws.js)
+ *   + las variables CASA_* del control de handshake (ver seguridad-ws.js); CASA_ALLOWED_ORIGINS también decide el CORS de /api
  *
  * Política del editor (falla cerrado):
  *   hash definido            → el editor pide usuario y contraseña (sesión de 1 h)
@@ -21,7 +21,7 @@
  * Por qué importa: quien llega al editor puede leer el estado interno, cambiar el flujo y ejecutar código en el servidor.
  */
 'use strict'
-const { crearVerificador } = require('./seguridad-ws.js')
+const { crearVerificador, origenesPermitidos } = require('./seguridad-ws.js')
 
 const env = process.env
 const hash = String(env.NODERED_ADMIN_HASH || '').trim()
@@ -64,7 +64,27 @@ const settings = {
   // Handshake del WebSocket: Origin permitido + conexiones por IP (ver seguridad-ws.js)
   webSocketNodeVerifyClient: crearVerificador(env),
 
-  // Cabeceras mínimas en las rutas /api (CORS lo decide el propio flujo con la lista CASA_ALLOWED_ORIGINS)
+  // CORS de las rutas /api: SOLO los orígenes de CASA_ALLOWED_ORIGINS. Hace falta aquí (y no solo en el flujo) para responder
+  // la petición previa OPTIONS que manda el navegador cuando el historial lleva «Authorization: Bearer …».
+  // Un origen no permitido no recibe Access-Control-Allow-Origin y el navegador bloquea la respuesta.
+  httpNodeCors: (() => {
+    const permitidos = origenesPermitidos(env)
+    return {
+      origin: (origin, cb) => cb(null, !!origin && permitidos.has(String(origin).replace(/\/+$/, ''))),
+      methods: 'GET,POST',
+      allowedHeaders: ['Authorization', 'Content-Type'],
+      maxAge: 600,
+    }
+  })(),
+
+  // Contexto: todo en memoria salvo el almacén «persistente» (en disco, carpeta context/ dentro de la carpeta de datos de
+  // Node-RED, ignorada por Git). Lo usa el anti-repetición de /api/ingest para que un reinicio no lo deje en blanco.
+  contextStorage: {
+    default: { module: 'memory' },
+    persistente: { module: 'localfilesystem', config: { flushInterval: 1 } },
+  },
+
+  // Cabeceras mínimas en las rutas /api (el flujo añade además su propio CORS con la misma lista: apiHeaders)
   httpNodeMiddleware: (req, res, next) => {
     res.removeHeader('X-Powered-By')
     res.setHeader('X-Content-Type-Options', 'nosniff')

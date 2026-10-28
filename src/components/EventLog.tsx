@@ -2,6 +2,7 @@ import { AlertTriangle, Info, OctagonAlert, Trash2 } from 'lucide-react'
 import { useLive } from '../hooks/useLive'
 import { fmtTime } from '../lib/format'
 import { useHouseStore } from '../store/useHouseStore'
+import { HiddenNote } from './Session'
 import type { EventLevel } from '../types/iot'
 
 const LEVEL: Record<EventLevel, { icon: React.ReactNode; row: string }> = {
@@ -13,6 +14,7 @@ const LEVEL: Record<EventLevel, { icon: React.ReactNode; row: string }> = {
 export function EventLog() {
   const events = useLive((s) => s.events)
   const clear = useHouseStore((s) => s.clearEvents)
+  const restricted = useHouseStore((s) => s.restricted)
 
   return (
     <div className="card flex h-full min-h-[280px] flex-col p-4">
@@ -29,7 +31,9 @@ export function EventLog() {
         </button>
       </div>
 
-      {events.length === 0 ? (
+      {restricted ? (
+        <HiddenNote what="El registro de eventos" />
+      ) : events.length === 0 ? (
         <p className="grid flex-1 place-items-center text-xs text-mute">Sin eventos todavía.</p>
       ) : (
         <ol className="-mx-1 flex-1 space-y-0.5 overflow-y-auto pr-1" aria-live="polite">

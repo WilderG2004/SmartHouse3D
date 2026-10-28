@@ -1,15 +1,14 @@
 @import "tailwindcss";
 
 /*
- * Sistema de diseno de la interfaz (tema claro y tranquilo).
+ * Sistema de diseno: HUD de gemelo digital (tema oscuro con vidrio).
  *
- * Reglas que sigue la paleta:
- *  - 60 / 30 / 10: 60 % fondos neutros (canvas y panel), 30 % texto y bordes suaves, 10 % color de marca y avisos.
- *  - Un solo color de marca (verde azulado) para todo lo que se puede pulsar o esta "activo".
- *  - Los colores de aviso tienen significado fijo: ambar = energia / luz / precaucion, azul = frio / presencia,
- *    verde = todo bien, rojo = peligro. Nunca se usan para decorar.
- *  - Cada color tiene 3 tonos: base (rellenos, iconos), strong (TEXTO sobre fondo claro, contraste >= 4.5:1) y soft (fondo suave).
- *  - Texto principal sobre blanco: contraste ~14:1. Texto secundario: ~5.6:1 (cumple AA).
+ * La casa en 3D ocupa toda la pantalla; los paneles flotan encima como vidrio esmerilado
+ * (fondo pizarra al 70 %, desenfoque, borde blanco al 10 %).
+ * Colores con significado fijo, nunca de adorno:
+ *   esmeralda = seguro / en linea · ambar = luces y consumo · cian = clima y sensores · coral = alertas e intrusiones.
+ * Cada color tiene 3 tonos: base (rellenos, iconos), strong (TEXTO sobre el fondo oscuro, contraste >= 4.5:1) y soft (fondo suave).
+ * Los componentes solo usan estos nombres (bg-panel, text-mute, text-warm-strong…): cambiar el tema es cambiar este bloque.
  */
 @theme {
   --font-sans: "Inter", "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -28,43 +27,43 @@
   --text-3xl: 2rem;
   --text-3xl--line-height: 2.25rem;
 
-  /* Superficies */
-  --color-canvas: #f2f5f3; /* fondo de la pagina */
-  --color-panel: #ffffff; /* tarjetas */
-  --color-raised: #eaf0ed; /* fondos suaves: seleccion, hover, controles */
-  --color-line: #dbe3df; /* bordes */
+  /* Superficies (vidrio sobre la escena) */
+  --color-canvas: #070b14; /* fondo de la pagina */
+  --color-panel: rgb(15 23 42 / 0.72); /* tarjetas y paneles: slate-900 al 72 % */
+  --color-raised: rgb(255 255 255 / 0.06); /* seleccion, hover, controles */
+  --color-line: rgb(255 255 255 / 0.1); /* bordes */
 
   /* Texto */
-  --color-fg: #17302c;
-  --color-mute: #587069;
+  --color-fg: #e2e8f0;
+  --color-mute: #94a3b8;
 
-  /* Marca */
-  --color-brand: #0f766e;
-  --color-brand-strong: #0b5f58;
-  --color-brand-soft: #d6efea;
+  /* Marca (lo que se puede pulsar o esta activo): esmeralda */
+  --color-brand: #059669;
+  --color-brand-strong: #34d399;
+  --color-brand-soft: rgb(16 185 129 / 0.16);
 
-  /* Energia, luz, precaucion */
-  --color-warm: #f4a21d;
-  --color-warm-strong: #a65a06;
-  --color-warm-soft: #fdf1d8;
+  /* Luces, consumo, precaucion: ambar */
+  --color-warm: #f59e0b;
+  --color-warm-strong: #fbbf24;
+  --color-warm-soft: rgb(245 158 11 / 0.15);
 
-  /* Frio, aire acondicionado, presencia */
-  --color-cool: #2b9bd6;
-  --color-cool-strong: #07679a;
-  --color-cool-soft: #e0f1fb;
+  /* Clima, sensores, presencia: cian */
+  --color-cool: #06b6d4;
+  --color-cool-strong: #22d3ee;
+  --color-cool-soft: rgb(6 182 212 / 0.15);
 
-  /* Todo bien, enchufes encendidos */
-  --color-ok: #2fa56f;
-  --color-ok-strong: #17724a;
-  --color-ok-soft: #dcf4e7;
+  /* Seguro, en linea: esmeralda */
+  --color-ok: #10b981;
+  --color-ok-strong: #34d399;
+  --color-ok-soft: rgb(16 185 129 / 0.15);
 
-  /* Peligro */
-  --color-bad: #d9382c;
-  --color-bad-strong: #a8231a;
-  --color-bad-soft: #fde4e1;
+  /* Alertas, intrusion: coral */
+  --color-bad: #f43f5e;
+  --color-bad-strong: #fb7185;
+  --color-bad-soft: rgb(244 63 94 / 0.16);
 
-  --shadow-card: 0 1px 2px rgb(23 48 44 / 0.05), 0 6px 18px rgb(23 48 44 / 0.06);
-  --shadow-float: 0 2px 4px rgb(23 48 44 / 0.08), 0 10px 28px rgb(23 48 44 / 0.14);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px rgb(2 6 23 / 0.35);
+  --shadow-float: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 48px rgb(2 6 23 / 0.5);
 }
 
 html,
@@ -75,7 +74,8 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-canvas);
+  /* Fondo atmosferico: se ve mientras carga el 3D y detras de los paneles en pantallas chicas */
+  background: radial-gradient(120% 80% at 50% 0%, #15233f 0%, #0b1324 45%, var(--color-canvas) 100%) fixed;
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-size: 15px;
@@ -88,7 +88,7 @@ body {
 /* Scrollbars discretas */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #b8c7c1 transparent;
+  scrollbar-color: rgb(148 163 184 / 0.35) transparent;
 }
 
 /* Controles bloqueados (sesión de solo lectura o sin el rol necesario) */
@@ -107,21 +107,37 @@ input:disabled {
 }
 
 @layer components {
-  /* Tarjeta base: todas las cajas de contenido se ven iguales */
+  /* Tarjeta base: vidrio esmerilado (todas las cajas de contenido se ven iguales) */
   .card {
     background: var(--color-panel);
     border: 1px solid var(--color-line);
     border-radius: 1rem;
     box-shadow: var(--shadow-card);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
 
-  /* Cristal claro para lo que flota sobre la vista 3D */
+  /* Vidrio para lo que flota sobre la vista 3D (backdrop-blur-md + bg-slate-900/70 + border-white/10) */
   .glass {
-    background: rgb(255 255 255 / 0.88);
-    border: 1px solid rgb(219 227 223 / 0.9);
+    background: rgb(15 23 42 / 0.7);
+    border: 1px solid rgb(255 255 255 / 0.1);
     box-shadow: var(--shadow-float);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
+  }
+
+  /* Tarjeta de un sensor dentro de la escena 3D (hover / clic) */
+  .sensor-card {
+    width: 15.5rem;
+    border-radius: 1rem;
+    padding: 0.85rem;
+    color: #e2e8f0;
+    background: rgb(15 23 42 / 0.78);
+    border: 1px solid rgb(255 255 255 / 0.12);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.2), 0 18px 40px rgb(2 6 23 / 0.55);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    animation: card-in 0.18s ease-out;
   }
 
   /* Etiquetas flotantes dentro de la escena 3D */
@@ -136,9 +152,9 @@ input:disabled {
     font-weight: 600;
     line-height: 1;
     color: var(--color-fg);
-    background: rgb(255 255 255 / 0.94);
-    border: 1px solid rgb(219 227 223 / 0.95);
-    box-shadow: 0 1px 2px rgb(23 48 44 / 0.12), 0 4px 12px rgb(23 48 44 / 0.12);
+    background: rgb(15 23 42 / 0.8);
+    border: 1px solid rgb(255 255 255 / 0.12);
+    box-shadow: 0 4px 14px rgb(2 6 23 / 0.45);
   }
 }
 
@@ -147,7 +163,7 @@ input:disabled {
 [data-walking='true'] .glass {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  background: rgb(255 255 255 / 0.95);
+  background: rgb(15 23 42 / 0.88);
 }
 
 /* Slider (dimmer, hora, brillo) */
@@ -166,16 +182,16 @@ input[type="range"]::-webkit-slider-thumb {
   width: 18px;
   border-radius: 50%;
   background: var(--color-brand);
-  border: 3px solid #fff;
-  box-shadow: 0 1px 4px rgb(23 48 44 / 0.4);
+  border: 3px solid #0f172a;
+  box-shadow: 0 0 0 1px rgb(16 185 129 / 0.6), 0 1px 4px rgb(0 0 0 / 0.5);
 }
 input[type="range"]::-moz-range-thumb {
   height: 14px;
   width: 14px;
   border-radius: 50%;
   background: var(--color-brand);
-  border: 3px solid #fff;
-  box-shadow: 0 1px 4px rgb(23 48 44 / 0.4);
+  border: 3px solid #0f172a;
+  box-shadow: 0 0 0 1px rgb(16 185 129 / 0.6), 0 1px 4px rgb(0 0 0 / 0.5);
 }
 input[type="range"]:disabled {
   opacity: 0.4;
@@ -189,12 +205,12 @@ input[type="color"] {
   width: 26px;
   height: 26px;
   padding: 0;
-  border: 2px solid #fff;
+  border: 2px solid #0f172a;
   border-radius: 50%;
   background: none;
   cursor: pointer;
   overflow: hidden;
-  box-shadow: 0 0 0 1px var(--color-line), 0 1px 3px rgb(23 48 44 / 0.2);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25), 0 1px 3px rgb(0 0 0 / 0.4);
 }
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
@@ -202,14 +218,53 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
 
 select {
   cursor: pointer;
+  color-scheme: dark;
 }
 
+/* Variables del HUD: cuanto espacio ocupan la barra de arriba y el panel de la derecha (el visor 3D pone sus
+   controles en lo que queda). En pantallas chicas todo va en columna y los controles quedan pegados al borde. */
+:root {
+  --hud-top: 0.75rem;
+  --hud-right: 0.75rem;
+}
+@media (min-width: 1024px) {
+  .hud {
+    --hud-top: 10.5rem;
+    --hud-right: 27.75rem;
+  }
+  .hud[data-panel='collapsed'] {
+    --hud-right: 4.5rem;
+  }
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+.sheet-in { animation: sheet-in 0.25s ease-out; }
+@keyframes ping-slow {
+  0% { box-shadow: 0 0 0 0 currentColor; }
+  80%, 100% { box-shadow: 0 0 0 6px transparent; }
+}
+.animate-ping-slow { animation: ping-slow 1.4s ease-out infinite; }
+
 @keyframes alarm-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(217 56 44 / 0.5); }
-  50% { box-shadow: 0 0 0 10px rgb(217 56 44 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(244 63 94 / 0.55); }
+  50% { box-shadow: 0 0 0 10px rgb(244 63 94 / 0); }
 }
 .alarm-pulse { animation: alarm-pulse 1s ease-out infinite; }
 
+/* Alarma: viñeta coral que late alrededor de la escena 3D */
+@keyframes alarm-vignette {
+  0%, 100% { box-shadow: inset 0 0 60px 10px rgb(244 63 94 / 0.25); }
+  50% { box-shadow: inset 0 0 160px 40px rgb(244 63 94 / 0.5); }
+}
+.alarm-vignette { animation: alarm-vignette 1.2s ease-in-out infinite; box-shadow: inset 0 0 120px 30px rgb(244 63 94 / 0.4); }
+
 @media (prefers-reduced-motion: reduce) {
-  .alarm-pulse, .animate-pulse { animation: none !important; }
+  .alarm-pulse, .alarm-vignette, .animate-pulse, .animate-ping-slow, .sensor-card, .sheet-in { animation: none !important; }
 }

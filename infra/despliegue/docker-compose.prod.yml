@@ -99,7 +99,9 @@ services:
       DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-casa}
       DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-casa_iot}
       DOCKER_INFLUXDB_INIT_RETENTION: 30d
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "${INFLUX_ADMIN_TOKEN:?Falta infra/.env (npm run seguridad:secretos)}"
+      # Solo se usa la PRIMERA vez (volumen vacío). Después bórralo de infra/.env (npm run seguridad:secretos -- --olvidar-admin):
+      # vacío, InfluxDB conserva el token con el que se creó y los servicios usan los dos tokens de un permiso.
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "${INFLUX_ADMIN_TOKEN:-}"
     volumes:
       - influxdb-data:/var/lib/influxdb2
       - influxdb-config:/etc/influxdb2

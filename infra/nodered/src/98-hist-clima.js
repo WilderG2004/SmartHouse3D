@@ -1,8 +1,9 @@
 // @name Consulta Flux · temperatura
 // @kind plain
-// @uses range,cors
+// @uses crypto,cors,auth,range
 // @outputs 2
-// GET /api/history/climate?room=<id>&from=<ms>&to=<ms>&bucket=<seg>   → habitación + exterior
+// GET /api/history/climate?room=<id>&from=<ms>&to=<ms>&bucket=<seg>   → habitación + exterior   (Authorization: Bearer <clave>)
+if (denyApi(msg)) return [null, msg];   // sin clave válida: 401 (o 429 si hay demasiados intentos)
 const r = parseRange(msg.req.query);
 msg._t0 = Date.now();
 msg._route = '/history/climate';

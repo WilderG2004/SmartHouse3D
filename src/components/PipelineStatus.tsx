@@ -69,7 +69,7 @@ function Step({
   last?: boolean
 }) {
   return (
-    <div className="relative rounded-xl border border-line bg-canvas/70 p-4">
+    <div className="relative rounded-xl border border-line bg-white/[0.03] p-4">
       <div className="flex items-start gap-2.5">
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-strong">{icon}</span>
         <div className="min-w-0 flex-1">
@@ -113,8 +113,8 @@ export function PipelineStatus() {
           <div className="font-semibold text-warm-strong">Simulación local: estos datos NO vienen de Node-RED</div>
           <p className="mt-1 text-xs text-fg/80">
             Los genera la propia app para desarrollar sin backend. Para ver el pipeline real (Node-RED → InfluxDB → interfaz) inicia Node-RED y pon{' '}
-            <code className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-[12px]">VITE_TELEMETRY_MODE=websocket</code> en el{' '}
-            <code className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-[12px]">.env</code>.
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[12px]">VITE_TELEMETRY_MODE=websocket</code> en el{' '}
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[12px]">.env</code>.
           </p>
         </div>
       </section>

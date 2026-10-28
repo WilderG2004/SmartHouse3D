@@ -60,31 +60,46 @@ interface HouseStore {
   pipeline: PipelineState
   /** Mensajes recibidos de la fuente de datos (para medir el ritmo real) */
   stream: { total: number; lastAt: number }
+  /** true = pantalla sin emparejar: el servidor no manda alarma, movimiento, puertas, eventos, alertas, luces ni consumo */
+  restricted: boolean
   apply: (msg: TelemetryMessage) => void
   seedHistory: (seed: { power: PowerPoint[]; smoke: TimePoint[] }) => void
   clearEvents: () => void
 }
 
 const push = <T extends TimePoint>(arr: T[], p: T) => [...arr, p].slice(-MAX_POINTS)
+/** Como push, pero si el último punto tiene el mismo instante lo reemplaza (una pantalla emparejada recibe el clima dos
+ *  veces seguidas: primero la versión pública, sin luminosidad, y luego la completa) */
+const upsert = <T extends TimePoint>(arr: T[], p: T) =>
+  arr.length && arr[arr.length - 1].ts === p.ts ? [...arr.slice(0, -1), p] : push(arr, p)
 
-export const useHouseStore = create<HouseStore>((set) => ({
-  connection: 'connecting',
-  lights: Object.fromEntries(
-    LIGHTS.map((l) => [l.id, { id: l.id, on: false, intensity: 100, color: DEFAULT_LIGHT_COLOR }]),
-  ),
-  smoke: { ppm: SMOKE.normalPpm, alarm: false, simulating: false },
-  pir: Object.fromEntries(PIRS.map((p) => [p.id, { motion: false, lastTriggerAt: null }])),
-  doors: Object.fromEntries(DOORS.map((d) => [d.id, { open: false }])),
-  power: { watts: 0, kwhTotal: 0 },
-  climate: Object.fromEntries(ROOMS.map((r) => [r.id, { temperature: 26, humidity: 60 }])),
-  acs: Object.fromEntries(
+// Valores neutros de lo que una pantalla anónima no ve (al perder la sesión se borra lo que se veía antes)
+const noPir = () => Object.fromEntries(PIRS.map((p) => [p.id, { motion: false, lastTriggerAt: null }]))
+const noDoors = () => Object.fromEntries(DOORS.map((d) => [d.id, { open: false }]))
+const NO_SECURITY: SecurityState = { mode: 'disarmed', alarm: false, cause: null }
+const noLights = () =>
+  Object.fromEntries(LIGHTS.map((l) => [l.id, { id: l.id, on: false, intensity: 100, color: DEFAULT_LIGHT_COLOR }]))
+const NO_POWER = { watts: 0, kwhTotal: 0 }
+const noAcs = () =>
+  Object.fromEntries(
     AIR_CONDITIONERS.map((a) => [
       a.id,
       { id: a.id, on: false, mode: 'cool', setpoint: 24, fan: 'mid', running: false, watts: 0 } as AcState,
     ]),
-  ),
-  plugs: Object.fromEntries(PLUGS.map((p) => [p.id, { id: p.id, on: false, watts: 0, kwh: 0 }])),
-  security: { mode: 'disarmed', alarm: false, cause: null },
+  )
+const noPlugs = () => Object.fromEntries(PLUGS.map((p) => [p.id, { id: p.id, on: false, watts: 0, kwh: 0 }]))
+
+export const useHouseStore = create<HouseStore>((set) => ({
+  connection: 'connecting',
+  lights: noLights(),
+  smoke: { ppm: SMOKE.normalPpm, alarm: false, simulating: false },
+  pir: noPir(),
+  doors: noDoors(),
+  power: NO_POWER,
+  climate: Object.fromEntries(ROOMS.map((r) => [r.id, { temperature: 26, humidity: 60 }])),
+  acs: noAcs(),
+  plugs: noPlugs(),
+  security: NO_SECURITY,
   world: { hour: 12, outdoorTemp: 29, hourOverride: false },
   powerHistory: [],
   smokeHistory: [],
@@ -94,27 +109,50 @@ export const useHouseStore = create<HouseStore>((set) => ({
   alerts: {},
   pipeline: {},
   stream: { total: 0, lastAt: 0 },
+  restricted: false,
 
   apply: (msg) =>
     set((s) => {
       const r = ((): Partial<HouseStore> | HouseStore => {
       switch (msg.type) {
-        case 'snapshot':
-          return {
-            lights: { ...s.lights, ...msg.state.lights },
+        case 'snapshot': {
+          const common = {
             smoke: msg.state.smoke,
-            pir: { ...s.pir, ...msg.state.pir },
-            doors: { ...s.doors, ...msg.state.doors },
-            power: msg.state.power,
             climate: { ...s.climate, ...msg.state.climate },
-            acs: { ...s.acs, ...msg.state.acs },
-            plugs: { ...s.plugs, ...msg.state.plugs },
-            security: msg.state.security,
             world: msg.state.world,
-            events: msg.state.events ? msg.state.events.slice(0, MAX_EVENTS) : s.events,
-            alerts: msg.state.alerts ? Object.fromEntries(msg.state.alerts.map((a) => [a.id, a])) : s.alerts,
             pipeline: msg.state.pipeline ?? s.pipeline,
           }
+          if (msg.state.restricted) {
+            // Vista pública: se borra lo que se veía antes (al cerrar la sesión) y queda en neutro; la interfaz dice «oculto»
+            return {
+              ...common,
+              restricted: true,
+              pir: noPir(),
+              doors: noDoors(),
+              security: NO_SECURITY,
+              events: [],
+              alerts: {},
+              lights: noLights(),
+              power: NO_POWER,
+              powerHistory: [],
+              acs: noAcs(),
+              plugs: noPlugs(),
+            }
+          }
+          return {
+            ...common,
+            restricted: false,
+            lights: { ...s.lights, ...msg.state.lights },
+            power: msg.state.power ?? s.power,
+            acs: { ...s.acs, ...msg.state.acs },
+            plugs: { ...s.plugs, ...msg.state.plugs },
+            pir: { ...s.pir, ...msg.state.pir },
+            doors: { ...s.doors, ...msg.state.doors },
+            security: msg.state.security ?? s.security,
+            events: msg.state.events ? msg.state.events.slice(0, MAX_EVENTS) : s.events,
+            alerts: msg.state.alerts ? Object.fromEntries(msg.state.alerts.map((a) => [a.id, a])) : s.alerts,
+          }
+        }
         case 'light': {
           const cur = s.lights[msg.id]
           if (!cur) return s
@@ -158,13 +196,13 @@ export const useHouseStore = create<HouseStore>((set) => ({
           const climateHistory = { ...s.climateHistory }
           for (const [room, c] of Object.entries(msg.rooms)) {
             climate[room] = c
-            climateHistory[room] = push(climateHistory[room] ?? [], { ts: msg.ts, value: c.temperature })
+            climateHistory[room] = upsert(climateHistory[room] ?? [], { ts: msg.ts, value: c.temperature })
           }
           return {
             climate,
             climateHistory,
             world: msg.world,
-            outdoorHistory: push(s.outdoorHistory, { ts: msg.ts, value: msg.world.outdoorTemp }),
+            outdoorHistory: upsert(s.outdoorHistory, { ts: msg.ts, value: msg.world.outdoorTemp }),
           }
         }
         case 'ac': {

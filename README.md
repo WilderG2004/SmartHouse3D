@@ -266,7 +266,7 @@ curl.exe -s http://127.0.0.1:1880/auth/login                                    
 curl.exe -s -o NUL -w "%{http_code}\n" http://127.0.0.1:1880/flows                # debe dar 401
 ```
 
-Y las **50 pruebas de rechazo** (simulan ataques: usalas **solo** contra tu propio Node-RED; durante ~1 minuto no podras emparejar porque
+Y las **65 pruebas de rechazo** (simulan ataques: usalas **solo** contra tu propio Node-RED; durante ~1 minuto no podras emparejar porque
 prueba 5 claves malas, y dejan puntos de prueba con `room=prueba`):
 
 ```powershell
@@ -289,5 +289,6 @@ Ultimo resultado en este equipo: **49 correctas, 0 fallas, 1 omitida (A15)**.
 
 ## Sobre las puertas del modelo 3D
 
-En el modelo de Blender, las puertas giran desde su centro y no desde la bisagra. El programa lo corrige solo (mide cada puerta y le pone una bisagra
-virtual), asi que no tienes que tocar Blender. Los detalles estan en [`public/README.md`](public/README.md).
+En el modelo de Blender, las puertas giran desde su centro y no desde la bisagra, y las manijas son piezas sueltas. El programa lo corrige solo (mide cada
+puerta, le pone una bisagra virtual en el borde contrario a la manija y pega la manija a la hoja), asi que no tienes que tocar Blender. Cada puerta abre
+hacia dentro de la habitacion a la que da paso, para no tapar los pasillos. Los detalles estan en [`public/README.md`](public/README.md).

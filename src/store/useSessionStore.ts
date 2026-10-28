@@ -25,6 +25,8 @@ export interface PendingConfirm {
 
 interface SessionStore {
   role: SessionRole
+  /** Alias del usuario con el que se emparejó la pantalla (lo manda el servidor); null = anónima */
+  user: string | null
   dialogOpen: boolean
   pairing: boolean
   pairError: string | null
@@ -53,6 +55,7 @@ const stopPairTimer = () => {
 export const useSessionStore = create<SessionStore>((set, get) => ({
   // Sin servidor (modo simulado local) no hay sesiones: todo está permitido
   role: telemetry.enforcesSessions ? 'lector' : 'administrador',
+  user: null,
   dialogOpen: false,
   pairing: false,
   pairError: null,
@@ -94,16 +97,17 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     switch (msg.type) {
       case 'session': {
         stopPairTimer()
-        const before = get().role
-        // «lector» mientras se estaba emparejando = se cortó la conexión antes de la respuesta: se avisa en el diálogo
-        const lostWhilePairing = get().pairing && msg.role === 'lector'
+        const before = get().user
+        const user = msg.user ?? null
+        // anónima mientras se estaba emparejando = se cortó la conexión antes de la respuesta: se avisa en el diálogo
+        const lostWhilePairing = get().pairing && !user
         // Con un Node-RED caído, cada intento fallido de reconexión repite «lector»: el aviso del diálogo no se borra por eso
-        const pairError = lostWhilePairing ? REJECT_TEXT.no_connection : msg.role === 'lector' ? get().pairError : null
-        set({ role: msg.role, pairing: false, pairError, ...(msg.role === 'lector' ? { confirms: [] } : {}) })
-        if (msg.revoked) get().notify('warn', 'Un administrador revocó las sesiones de control: esta pantalla vuelve a solo lectura.')
-        else if (msg.role !== before && msg.role !== 'lector') {
+        const pairError = lostWhilePairing ? REJECT_TEXT.no_connection : !user ? get().pairError : null
+        set({ role: msg.role, user, pairing: false, pairError, ...(msg.role === 'lector' ? { confirms: [] } : {}) })
+        if (msg.revoked) get().notify('warn', 'Un administrador revocó las sesiones: esta pantalla vuelve a la vista pública (solo lectura).')
+        else if (user && user !== before) {
           set({ dialogOpen: false })
-          get().notify('info', `Sesión emparejada como ${ROLE_LABEL[msg.role]}.`)
+          get().notify('info', `Sesión emparejada como ${ROLE_LABEL[msg.role]} (${user}).`)
         }
         return
       }
@@ -142,6 +146,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   // Se perdió la conexión: la sesión se pierde con ella
   reset: () => {
     stopPairTimer()
-    set({ role: telemetry.enforcesSessions ? 'lector' : 'administrador', confirms: [], pairing: false })
+    set({ role: telemetry.enforcesSessions ? 'lector' : 'administrador', user: null, confirms: [], pairing: false })
   },
 }))

@@ -25,5 +25,9 @@ infra/pruebas/resultados/
 .vercel
 .DS_Store
 
-# Datos locales de Node-RED (flujo instalado, credenciales cifradas, contexto)
+# Datos locales de Node-RED (flujo instalado, credenciales cifradas, sesiones del editor, contexto)
 infra/nodered-local/
+# Contexto «persistente» de Node-RED (anti-repetición de /api/ingest) si se usa otra carpeta de datos dentro del repo
+infra/nodered/context/
+infra/nodered/.sessions.json
+**/context/global/global.json

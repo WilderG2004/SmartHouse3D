@@ -2,8 +2,9 @@
 // @kind plain
 // @outputs 2
 // @uses crypto
-// Recibe registros {result, reason, kind, id, role, sid, …} de «Autorizar sesión» y de «Validar telemetría».
-//   Salida 1 → puntos de InfluxDB:  audit (tags result, reason, kind, role → id, session, confirmed, count)
+// Recibe registros {result, reason, kind, id, role, user, sid, …} de «Autorizar sesión» y de «Validar telemetría».
+//   Salida 1 → puntos de InfluxDB:  audit (tags result, reason, kind, role → id, user, session, confirmed, count)
+//                                  user = alias del usuario que emparejó la sesión (CASA_USERS o «compartida-…»); vacío si era anónima
 //                                  quarantine (tags dev, measurement, reason → summary): lecturas descartadas por anomalía
 //   Salida 2 → órdenes internas «security.notice»: un aviso en el registro de eventos por motivo, como máximo cada noticeEveryMs
 // Sin secretos: la sesión se guarda como un resumen de 8 caracteres y nunca se guardan claves, firmas ni mensajes completos.
@@ -21,6 +22,7 @@ if (A.tokens >= 1) {
   A.tokens -= 1;
   const tags = { result: String(r.result || '?'), reason: String(r.reason || '?'), kind: String(r.kind || '?'), role: String(r.role || '?') };
   const fields = { id: String(r.id || ''), session: String(r.sid || ''), count: typeof r.count === 'number' ? r.count : 1 };
+  if (r.user) fields.user = String(r.user).slice(0, 32);
   if (r.confirmed) fields.confirmed = true;
   points.push({ measurement: 'audit', tags, fields, timestamp: new Date(now) });
   if (r.quarantine) {

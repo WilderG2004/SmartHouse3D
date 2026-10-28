@@ -6,14 +6,20 @@
  *   node infra/generar-secretos.mjs --rotar CASA_PAIRING_KEY
  *   node infra/generar-secretos.mjs --rotar CASA_ADMIN_KEY,NODERED_ADMIN
  *   node infra/generar-secretos.mjs --limpiar-previas     borra las *_PREVIOUS cuando ya todos usan la clave nueva
+ *   node infra/generar-secretos.mjs --olvidar-admin       borra INFLUX_ADMIN_TOKEN del archivo (ya creaste buckets y tokens)
+ *   node infra/generar-secretos.mjs --usuario ana:operador  añade una clave PERSONAL a CASA_USERS (rol lector|operador|administrador)
  *   node infra/generar-secretos.mjs --archivo ruta/.env   otro destino
  *
  * Qué crea (todo aleatorio, sin patrones del proyecto):
- *   INFLUX_ADMIN_PASSWORD · INFLUX_ADMIN_TOKEN     administrador de InfluxDB (solo para crear buckets/tokens)
+ *   INFLUX_ADMIN_PASSWORD · INFLUX_ADMIN_TOKEN     administrador de InfluxDB (solo para crear buckets/tokens). El token da
+ *                                                  acceso TOTAL: en cuanto existan los dos tokens de un permiso, bórralo con
+ *                                                  --olvidar-admin (queda «INFLUX_ADMIN_TOKEN=» vacío y no se vuelve a crear
+ *                                                  salvo con --rotar INFLUX_ADMIN_TOKEN). Los scripts lo aceptan desde la terminal.
  *   GRAFANA_ADMIN_PASSWORD                         administrador de Grafana
  *   NODERED_ADMIN_USER / NODERED_ADMIN_HASH        acceso al EDITOR de Node-RED (se guarda solo el hash bcrypt)
  *   NODERED_CREDENTIAL_SECRET                      cifra flows_cred.json en disco
- *   CASA_PAIRING_KEY · CASA_ADMIN_KEY              claves de emparejamiento de sesión (rol Operador / Administrador)
+ *   CASA_PAIRING_KEY · CASA_ADMIN_KEY              claves COMPARTIDAS de emparejamiento (rol Operador / Administrador)
+ *   CASA_USERS (con --usuario)                     claves PERSONALES «alias:rol:clave,…»: la auditoría guarda el alias
  *   CASA_DEVICE_KEY                                clave maestra de la que salen las claves de cada dispositivo (firmas HMAC)
  *   INFLUX_TOKEN_WRITE · INFLUX_TOKEN_READ         quedan VACÍOS: los crea  npm run seguridad:tokens  cuando InfluxDB ya está arriba
  *
@@ -73,6 +79,8 @@ const secretos = {
 }
 const conPrevia = new Set(['CASA_PAIRING_KEY', 'CASA_ADMIN_KEY']) // se pueden rotar sin cortar: las dos claves valen a la vez
 for (const [k, gen] of Object.entries(secretos)) {
+  // INFLUX_ADMIN_TOKEN vacío a propósito (--olvidar-admin): no se vuelve a crear salvo que se pida rotarlo
+  if (k === 'INFLUX_ADMIN_TOKEN' && actual[k] === '' && !rotar.has(k)) continue
   const existe = actual[k] && actual[k].length >= 12
   if (!existe) cambios[k] = gen()
   else if (rotar.has(k)) {
@@ -88,6 +96,29 @@ if (!actual.NODERED_ADMIN_HASH || rotar.has('NODERED_ADMIN')) {
 }
 // Los tokens de InfluxDB los crea otro script (necesita InfluxDB en marcha); aquí solo se reserva el lugar
 for (const k of ['INFLUX_TOKEN_WRITE', 'INFLUX_TOKEN_READ']) if (actual[k] === undefined) cambios[k] = ''
+
+if (argv.includes('--olvidar-admin')) {
+  if (actual.INFLUX_ADMIN_TOKEN) {
+    cambios.INFLUX_ADMIN_TOKEN = ''
+    avisos.push('INFLUX_ADMIN_TOKEN borrado del archivo. Cuando lo necesites (setup-local, crear tokens, retención) ponlo solo en la terminal: $env:INFLUX_ADMIN_TOKEN = "…"')
+  } else avisos.push('INFLUX_ADMIN_TOKEN ya no estaba en el archivo.')
+}
+
+// Claves personales: --usuario alias:rol (la clave se genera aquí y solo se guarda en el archivo; no se imprime)
+const nuevoUsuario = opt('--usuario')
+if (nuevoUsuario) {
+  const [alias, rol] = String(nuevoUsuario).split(':')
+  const falla = (texto) => { console.error(`\n  ✘ ${texto}\n`); process.exit(1) }
+  if (!/^[A-Za-z0-9._-]{1,32}$/.test(alias || '') || !['lector', 'operador', 'administrador'].includes(rol)) {
+    falla('--usuario necesita alias:rol (alias de letras, números, . _ -; rol lector | operador | administrador)')
+  }
+  if (alias.startsWith('compartida-')) falla('Los alias «compartida-…» están reservados para las claves compartidas.')
+  const lista = String(actual.CASA_USERS || '').split(',').map((s) => s.trim()).filter(Boolean)
+  const resto = lista.filter((x) => x.split(':')[0] !== alias)
+  if (resto.length !== lista.length && !rotar.has(alias)) falla(`El usuario «${alias}» ya existe. Para darle una clave nueva: --usuario ${alias}:${rol} --rotar ${alias}`)
+  cambios.CASA_USERS = [...resto, `${alias}:${rol}:${aleatorio(24)}`].join(',')
+  avisos.push(`Usuario «${alias}» (${rol}) ${resto.length !== lista.length ? 'con clave nueva' : 'creado'}: su clave está en CASA_USERS de este archivo (pásasela por un canal seguro). Reinicia Node-RED para que la acepte.`)
+}
 
 if (argv.includes('--limpiar-previas')) {
   for (const k of ['CASA_PAIRING_KEY_PREVIOUS', 'CASA_ADMIN_KEY_PREVIOUS']) if (actual[k]) cambios[k] = ''
@@ -113,7 +144,7 @@ escribir(archivo, cambios, cabecera)
 
 const nuevos = Object.keys(cambios).filter((k) => !(k in actual) || (cambios[k] && cambios[k] !== actual[k]))
 console.log(`${existsSync(archivo) ? '✔' : '✘'} ${archivo}  (permisos 600)`)
-console.log('  Creado o actualizado: ' + nuevos.join(', '))
+if (nuevos.length) console.log('  Creado o actualizado: ' + nuevos.join(', '))
 for (const a of [...avisos, ...avisoDispositivo, ...avisoCred]) console.log('  · ' + a)
 if (passEditor) {
   console.log('\n  Editor de Node-RED   usuario: ' + (actual.NODERED_ADMIN_USER || cambios.NODERED_ADMIN_USER || 'admin'))

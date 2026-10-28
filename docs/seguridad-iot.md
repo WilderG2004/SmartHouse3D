@@ -171,8 +171,11 @@ flowchart LR
 
 ### 5.1 Sesión, roles y capacidades (M1)
 
-No hay cuentas. Cada conexión WebSocket es una **sesión** y empieza en `lector`. Con `{"kind":"session.hello","key":"…"}` la sesión pasa a
-`operador` o `administrador` si la clave coincide (se compara el hash SHA-256 con comparación en tiempo constante; las claves **no** se
+Cada conexión WebSocket es una **sesión** y empieza **anónima** (`lector` sin usuario). Con `{"kind":"session.hello","key":"…"}` la sesión toma el
+rol y el **alias** del usuario dueño de esa clave: claves **personales** en `CASA_USERS` (`alias:rol:clave,…`, se crean con
+`npm run seguridad:secretos -- --usuario ana:operador`) o las **compartidas** `CASA_PAIRING_KEY` / `CASA_ADMIN_KEY` (alias `compartida-operador` /
+`compartida-admin`). El alias queda en cada registro de auditoría: se sabe **quién** abrió una puerta. Un usuario con rol `lector` ve el estado
+completo pero no puede dar órdenes. La clave se acepta si coincide (se compara el hash SHA-256 con comparación en tiempo constante; las claves **no** se
 guardan en memoria visible ni salen por la API de contexto de Node-RED). La tabla se genera una sola vez en `tools/security-policy.mts`:
 
 | Tipo de mensaje | Lector | Operador | Administrador | Notas |
@@ -208,6 +211,22 @@ for (const k of Object.keys(p)) if (!spec.keys.includes(k)) return reject('schem
 **Límite de visibilidad (importante):** todo lo que empieza por `VITE_` se copia **dentro del código que descarga el navegador**. Por eso la
 clave **nunca** va en una variable `VITE_…`: se escribe en la pantalla y se guarda solo en `sessionStorage` (esa pestaña), y se borra si el
 servidor la rechaza.
+
+#### Vista pública (privacidad)
+
+El modo de la alarma («fuera»), los detectores de movimiento, las puertas, los eventos, las alertas, **las luces encendidas y el consumo** (medidor
+general, enchufes y aires: un televisor o un aire prendido delata a la persona) dicen **si la casa está vacía**. Por eso:
+
+- Una sesión **anónima** recibe un snapshot reducido (`restricted: true`, sin `pir`, `doors`, `security`, `events`, `alerts`, `lights`, `power`,
+  `plugs` ni `acs`) y **nunca** los mensajes `pir`, `door`, `security`, `event`, `alert`, `light`, `power`, `plug` ni `ac`. El clima le llega
+  **sin `lux`**: la luminosidad sube unos 180 lx por bombillo y revelaría las luces (`privacy.hiddenClimateFields`). Lo aplica el nodo «Filtrar por sesión y serializar» (`97-serializar.js`) con la tabla
+  `privacy` de `security-policy.mts`. Al emparejar llega el snapshot completo; al cerrar la sesión o ser revocada, otra vez el reducido.
+- El historial (`GET /api/history/*`) exige `Authorization: Bearer <clave de usuario>`; sin ella responde **401** (también a `curl`). Los fallos
+  cuentan en el mismo tope global que los emparejamientos (429 al pasarlo). El CORS de `/api` (`httpNodeCors` en `settings.js`) solo responde
+  la petición previa `OPTIONS` a los orígenes de `CASA_ALLOWED_ORIGINS`.
+- La interfaz muestra «no se muestra en la vista pública» en lugar de esos datos (no inventa un «cerrada», «desarmada» ni «0 W»). En el 3D
+  no se dibujan los aires ni los enchufes y el medidor dice «Oculto».
+- Lo que sí ve una pantalla anónima: temperatura y humedad de cada habitación, el humo, la hora simulada y la temperatura exterior.
 
 ### 5.2 Transporte (M2)
 
@@ -253,8 +272,8 @@ recalcula y avisa si falta, sobra o cambió algún punto (código de salida 1).
 
 ### 5.4 Auditoría (M5)
 
-Cada orden aceptada, rechazada o pendiente deja un punto `audit` (etiquetas `result`, `reason`, `kind`, `role`; campos `id`, `session` — un
-resumen de 8 caracteres, **nunca** el id completo—, `count`). Nunca se guardan claves, firmas ni mensajes completos. Hay un tope de
+Cada orden aceptada, rechazada o pendiente deja un punto `audit` (etiquetas `result`, `reason`, `kind`, `role`; campos `id`, `user` — el alias
+del usuario que emparejó la sesión—, `session` — un resumen de 8 caracteres, **nunca** el id completo—, `count`). Nunca se guardan claves, firmas ni mensajes completos. Hay un tope de
 puntos por segundo: una inundación no puede llenar la base de datos; lo que sobra se resume en **un** punto `flood`. El panel de Grafana
 «Casa IoT · Seguridad» muestra órdenes aceptadas, rechazos por motivo, intentos de repetición, firmas inválidas, lecturas en cuarentena,
 cambios de la alarma y las huellas de integridad.
@@ -266,7 +285,9 @@ cambios de la alarma y las huellas de integridad.
 | Token en `flows_cred.json` y en el compose | `flows_cred.json` solo trae `${INFLUX_TOKEN_WRITE}` / `${INFLUX_TOKEN_READ}`; los valores viven en `infra/.env` |
 | `credentialSecret: false` | `NODERED_CREDENTIAL_SECRET` (≥ 16 caracteres) desde el entorno |
 | Editor abierto | `adminAuth` con hash bcrypt y sesión de 1 h; sin hash → editor **apagado** |
-| Un token con todos los permisos | Dos tokens de un solo permiso cada uno; el de administrador solo para crearlos |
+| Un token con todos los permisos | Dos tokens de un solo permiso cada uno; el de administrador solo para crearlos, y después se borra de `infra/.env` (`--olvidar-admin`) y se pasa por la terminal cuando haga falta. `npm run nodered:iniciar` nunca se lo pasa a Node-RED |
+| Retención solo al crear el bucket | `npm run seguridad:retencion` (y los instaladores) la aplican también a buckets existentes: 30 días datos y auditoría, 90 huellas |
+| Anti-repetición de `/api/ingest` solo en memoria | Último número de secuencia en disco (contexto `persistente`) + rechazo de lo firmado antes de arrancar |
 | Grafana anónimo + `tlsSkipVerify` | Sin acceso anónimo, sin registro, sin `tlsSkipVerify`; embebido desactivado por defecto |
 | `latest` | `nodered/node-red:5.0.8-22`, `grafana/grafana:11.6.1`, `influxdb:2.7`, `caddy:2.10-alpine` (**tags sin verificar**, ver §9) |
 
@@ -360,10 +381,13 @@ pestaña; otra pestaña nueva arranca en solo lectura; «Revocar» baja a la otr
    Vercel).
 4. Comprobar que existen los tags de imagen `5.0.8-22`, `grafana/grafana:11.6.1` y `caddy:2.10-alpine`, o cambiarlos por otros **concretos**.
 5. Pasar `npm run seguridad:probar` contra tu servidor y guardar la salida como evidencia del taller.
-6. **Encender Node-RED siempre con `npm run nodered:iniciar`** y comprobar que escucha en `127.0.0.1` y que el editor pide contraseña
+6. **Aplicar la retención** a tus buckets de InfluxDB Cloud: `$env:INFLUX_ADMIN_TOKEN = "…"; npm run seguridad:retencion; Remove-Item Env:INFLUX_ADMIN_TOKEN`
+   (Cloud gratuito admite 30 días como máximo: para las huellas usa `--dias-huellas 30` o un plan de pago).
+7. **Dar a cada persona su clave** (`npm run seguridad:secretos -- --usuario alias:rol`) y dejar las compartidas solo como respaldo.
+8. **Encender Node-RED siempre con `npm run nodered:iniciar`** y comprobar que escucha en `127.0.0.1` y que el editor pide contraseña
    (`/auth/login` → `"type":"credentials"`, `/flows` → 401). Ver la sección "Seguridad IoT" del `README.md` principal.
-7. **Revocar en InfluxDB ▸ API Tokens** cualquier token que se haya pegado en un chat o un documento, y los que ya no use nadie.
-8. Si la contraseña del editor o una clave se filtra (por ejemplo, al pegar la salida de `seguridad:secretos`), **rotarla**
+9. **Revocar en InfluxDB ▸ API Tokens** cualquier token que se haya pegado en un chat o un documento, y los que ya no use nadie.
+10. Si la contraseña del editor o una clave se filtra (por ejemplo, al pegar la salida de `seguridad:secretos`), **rotarla**
    (`npm run seguridad:secretos -- --rotar NODERED_ADMIN`) y reiniciar Node-RED.
 
 ---

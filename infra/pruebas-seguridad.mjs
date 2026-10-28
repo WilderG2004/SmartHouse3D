@@ -3,8 +3,13 @@
  * PRUEBAS DE RECHAZO de seguridad. Envían mensajes MALOS a TU Node-RED y comprueban que los rechaza.
  *
  *   node infra/pruebas-seguridad.mjs [--nodered http://localhost:1880] [--incluir-revocar] [--sin-esperas] [--json resultados.json]
+ *   Anti-repetición tras un reinicio (dos pasos, con CASA_INGEST=on):
+ *     node infra/pruebas-seguridad.mjs --replay-guardar ruta.json    envía un mensaje válido y lo guarda
+ *     (reinicia Node-RED)
+ *     node infra/pruebas-seguridad.mjs --replay-probar ruta.json     lo reenvía: debe rechazarse
  *
- * Qué necesita (variables de entorno, las MISMAS con las que arrancó Node-RED; nunca se imprimen):
+ * Qué necesita (variables de entorno, las MISMAS con las que arrancó Node-RED; nunca se imprimen). Si no están en la
+ * terminal, se leen de infra/.env (o de --archivo ruta/.env), igual que hace  npm run nodered:iniciar:
  *   CASA_PAIRING_KEY  clave del rol Operador         → pruebas de órdenes con sesión de control
  *   CASA_ADMIN_KEY    clave del rol Administrador    → solo con --incluir-revocar
  *   CASA_DEVICE_KEY   clave maestra de dispositivos  → pruebas de telemetría firmada (y Node-RED con CASA_INGEST=on)
@@ -18,7 +23,10 @@
  * Necesita Node.js 22 o superior. Código de salida: 0 = todo lo ejecutado salió como se esperaba, 1 = alguna FALLA.
  */
 import { createHash, createHmac, randomBytes } from 'node:crypto'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { leer } from './lib/envfile.mjs'
 
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(`Pruebas de rechazo de seguridad (SOLO contra tu propio Node-RED).
@@ -29,7 +37,9 @@ Variables de entorno (las mismas con las que arrancó Node-RED; nunca se imprime
   CASA_PAIRING_KEY   pruebas con sesión de Operador
   CASA_ADMIN_KEY     solo con --incluir-revocar (expulsa a las demás sesiones y congela el emparejamiento 5 min)
   CASA_DEVICE_KEY    pruebas de telemetría firmada (Node-RED con CASA_INGEST=on)
-Lo que falte se marca OMITIDA. Código de salida: 0 = todo bien, 1 = alguna FALLA.`)
+  CASA_USERS         si hay claves personales, se prueba la primera (alias en la sesión)
+Si no están en la terminal se leen de infra/.env (--archivo otra/ruta.env). Lo que falte se marca OMITIDA.
+  --replay-guardar f / --replay-probar f   anti-repetición tras reiniciar Node-RED (ver cabecera del archivo) Código de salida: 0 = todo bien, 1 = alguna FALLA.`)
   process.exit(0)
 }
 
@@ -37,9 +47,18 @@ const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > -1 
 const flag = (n) => process.argv.includes(`--${n}`)
 const BASE = String(arg('nodered', 'http://localhost:1880')).replace(/\/$/, '')
 const WS_URL = BASE.replace(/^http/, 'ws') + '/ws/casa-iot'
-const OP = process.env.CASA_PAIRING_KEY || ''
-const ADMIN = process.env.CASA_ADMIN_KEY || ''
-const DEVKEY = process.env.CASA_DEVICE_KEY || ''
+const ENV_FILE = resolve(String(arg('archivo', join(dirname(fileURLToPath(import.meta.url)), '.env'))))
+const envFile = leer(ENV_FILE).valores
+const secreto = (k) => process.env[k] || envFile[k] || ''
+const OP = secreto('CASA_PAIRING_KEY')
+const ADMIN = secreto('CASA_ADMIN_KEY')
+const DEVKEY = secreto('CASA_DEVICE_KEY')
+// Primera clave personal de CASA_USERS (alias:rol:clave), si la hay
+const USER1 = (() => {
+  const item = secreto('CASA_USERS').split(',').map((x) => x.trim()).filter(Boolean)[0] || ''
+  const i = item.indexOf(':'), j = i > 0 ? item.indexOf(':', i + 1) : -1
+  return j > 0 ? { alias: item.slice(0, i), rol: item.slice(i + 1, j), key: item.slice(j + 1) } : null
+})()
 const FAST = flag('sin-esperas')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -88,6 +107,27 @@ async function post(path, body, headers = {}) {
 }
 const ingest = (envs) => post('/api/ingest', { msgs: Array.isArray(envs) ? envs : [envs] })
 
+/* ───────────── anti-repetición tras un reinicio (dos pasos) ───────────── */
+for (const modo of ['replay-guardar', 'replay-probar']) {
+  const ruta = arg(modo, '')
+  if (typeof ruta !== 'string' || !ruta) continue
+  if (!DEVKEY) { console.error('Falta CASA_DEVICE_KEY.'); process.exit(1) }
+  if (modo === 'replay-guardar') {
+    const env = sign(DEV, mk(DEV, { temperature: 24.2, humidity: 51 }))
+    const r = await ingest(env)
+    writeFileSync(ruta, JSON.stringify(env) + '\n')
+    console.log(`Mensaje válido enviado (HTTP ${r.status}, aceptados ${r.json?.accepted ?? '?'}) y guardado en ${ruta}. Reinicia Node-RED y ejecuta --replay-probar ${ruta}`)
+    process.exit(r.status === 202 ? 0 : 1)
+  } else {
+    const env = JSON.parse(readFileSync(ruta, 'utf8'))
+    const r = await ingest(env)
+    const why = r.json?.rejected?.[0]?.reason ?? 'aceptado'
+    const ok = r.status === 422 && (why === 'replay' || why === 'stale')
+    console.log(`  ${ok ? '✔' : '✘'} B12   Reenviar tras reiniciar Node-RED un mensaje ya aceptado\n        esperado: rechazo «replay» o «stale» · obtenido: HTTP ${r.status} · ${why === 'aceptado' ? 'ACEPTADO' : '«' + why + '»'}`)
+    process.exit(ok ? 0 : 1)
+  }
+}
+
 /* ───────────── registro de resultados ───────────── */
 const results = []
 function record(id, group, title, expected, got, status, evidence) {
@@ -116,6 +156,9 @@ console.log('A · Órdenes por WebSocket (R1: control no autorizado)')
   expectReject('A6', 'ordenes', 'JSON sin «kind»', await ask(c, { id: 'Luz_Garage' }), 'schema', 'audit: reason=schema')
   close(c)
 }
+// Lo que una pantalla sin emparejar NO debe recibir (copia de privacy en infra/nodered/tools/security-policy.mts)
+const OCULTO_ESTADO = ['pir', 'doors', 'security', 'events', 'alerts', 'lights', 'power', 'plugs', 'acs']
+const OCULTO_TIPOS = ['door', 'security', 'pir', 'event', 'alert', 'light', 'power', 'plug', 'ac']
 {
   const c = await connect(); await sleep(250)
   // inundación desde una sesión de solo lectura
@@ -124,11 +167,16 @@ console.log('A · Órdenes por WebSocket (R1: control no autorizado)')
   await sleep(1200)
   // Un snapshot válido responde con un mensaje «snapshot» (echoes). Con la cubeta de fichas solo unos pocos pasan.
   const snaps = c.echoes.filter((m) => m.type === 'snapshot').length
+  const snap = c.echoes.find((m) => m.type === 'snapshot')
+  const st = snap?.state || {}
+  const filtrado = OCULTO_ESTADO.filter((k) => k in st)
+  if (Object.values(st.climate || {}).some((r) => r && 'lux' in r)) filtrado.push('climate.lux')
+  record('A16', 'privacidad', 'Una pantalla anónima recibe el estado REDUCIDO', 'restricted=true, sin ' + OCULTO_ESTADO.join('/') + ' ni lux', snap ? (st.restricted ? 'restricted' : 'completo') + (filtrado.length ? ' · trae ' + filtrado.join(',') : ' · sin datos sensibles') : 'sin snapshot', snap && st.restricted === true && !filtrado.length ? 'OK' : 'FALLA', 'la alarma, el movimiento, las puertas, las luces y el consumo dicen si la casa está vacía')
   record('A7', 'ordenes', 'Inundación: 120 mensajes en un instante desde una sesión de lectura', 'se atienden pocos (límite por sesión), el resto se descarta', snaps + ' atendidos de 120 · rechazos silenciosos: ' + (c.replies.length - n0), snaps > 0 && snaps <= 25 ? 'OK' : 'FALLA', 'audit: reason=rate_limit (con tope por segundo) y un aviso en el log de eventos')
   close(c)
 }
 if (!OP) {
-  for (const [id, t] of [['A8', 'Clave de emparejamiento incorrecta'], ['A9', 'Bloqueo tras 5 intentos fallidos'], ['A10', 'Valor fuera de rango'], ['A11', 'Dispositivo inexistente'], ['A12', 'Campos internos colados'], ['A13', 'Rol insuficiente'], ['A14', 'Confirmación en dos pasos']]) skip(id, 'ordenes', t, 'falta CASA_PAIRING_KEY')
+  for (const [id, t] of [['A8', 'Clave de emparejamiento incorrecta'], ['A9', 'Bloqueo tras 5 intentos fallidos'], ['A10', 'Valor fuera de rango'], ['A11', 'Dispositivo inexistente'], ['A12', 'Campos internos colados'], ['A13', 'Rol insuficiente'], ['A14', 'Confirmación en dos pasos'], ['A17d', 'Clima sin luminosidad para la anónima']]) skip(id, 'ordenes', t, 'falta CASA_PAIRING_KEY')
 } else {
   {
     const c = await connect(); await sleep(250)
@@ -142,6 +190,10 @@ if (!OP) {
     const c = await connect(); await sleep(250)
     const hello = await ask(c, { kind: 'session.hello', key: OP })
     record('A0', 'ordenes', 'Control positivo: emparejar con la clave de Operador', 'sesión «operador»', hello ? hello.type + ' ' + (hello.role ?? hello.reason) : 'sin respuesta', hello && hello.type === 'session' && ['operador', 'administrador'].includes(hello.role) ? 'OK' : 'FALLA', 'audit: reason=paired')
+    record('A17a', 'privacidad', 'La sesión emparejada queda identificada (alias para la auditoría)', 'user = «compartida-operador»', hello?.user ? 'user = «' + hello.user + '»' : 'sin user', hello?.user === 'compartida-operador' ? 'OK' : 'FALLA', 'audit: field user')
+    await sleep(500)
+    const full = [...c.echoes].reverse().find((m) => m.type === 'snapshot')
+    record('A17b', 'privacidad', 'Al emparejar llega el estado COMPLETO', 'snapshot sin restricted, con doors, security, lights y power', full ? (full.state.restricted ? 'reducido' : 'completo') : 'sin snapshot', full && !full.state.restricted && full.state.doors && full.state.security && full.state.lights && full.state.power ? 'OK' : 'FALLA', '')
     expectReject('A10a', 'ordenes', 'Intensidad 150 (rango 0-100)', await ask(c, { kind: 'light.set', id: 'Luz_Garage', patch: { intensity: 150 } }), 'range', 'audit: reason=range')
     expectReject('A10b', 'ordenes', 'Consigna del aire en 40 °C (rango 16-30)', await ask(c, { kind: 'ac.set', id: 'AC_Sala_Principal', patch: { setpoint: 40 } }), 'range', 'audit: reason=range')
     expectReject('A10c', 'ordenes', 'Color que no es hexadecimal', await ask(c, { kind: 'light.set', id: 'Luz_Garage', patch: { color: '#zzzzzz' } }), 'range', 'audit: reason=range')
@@ -175,8 +227,23 @@ if (!OP) {
       record('A14g', 'ordenes', 'Confirmar la puerta del perímetro (control positivo)', 'se ejecuta: llega «abierta»', echoPuerta ? 'ejecutada' : abierta ? abierta.type + ' ' + (abierta.reason || '') : 'sin efecto', echoPuerta ? 'OK' : 'FALLA', 'audit: reason=confirmed, confirmed=true')
       await ask(c, { kind: 'door.set', id: 'Sensor_Puerta_Entrada', open: false }) // se deja cerrada (cerrar no pide confirmación)
     }
+    const anon = await connect(); await sleep(300)
     const interior = await ask(c, { kind: 'door.set', id: 'Puerta_Cocina', open: true }, 500)
-    await sleep(300)
+    await ask(c, { kind: 'light.set', id: 'Luz_Garage', patch: { on: true } }, 400) // cambio de luz con la anónima mirando
+    const luzLlego = c.echoes.some((m) => m.type === 'light' && m.id === 'Luz_Garage' && m.patch && m.patch.on === true)
+    await ask(c, { kind: 'light.set', id: 'Luz_Garage', patch: { on: false } }, 300)
+    // A17d: el clima le llega a la anónima SIN luminosidad (subiría con cada bombillo); a la emparejada, completo
+    let climaAnon = null, climaFull = null
+    for (let t = 0; t < 70 && !(climaAnon && climaFull); t++) {
+      await sleep(100)
+      climaAnon = anon.echoes.find((m) => m.type === 'climate') || null
+      climaFull = [...c.echoes].reverse().find((m) => m.type === 'climate' && Object.values(m.rooms || {}).some((r) => r && 'lux' in r)) || null
+    }
+    const filtrada = anon.echoes.filter((m) => OCULTO_TIPOS.includes(m.type)).map((m) => m.type)
+    record('A17c', 'privacidad', 'Una pantalla anónima NO recibe puertas, luces, consumo ni eventos', 'ningún mensaje ' + OCULTO_TIPOS.join('/'), (filtrada.length ? 'recibió ' + [...new Set(filtrada)].join(',') : 'nada sensible') + (luzLlego ? ' · (la emparejada sí vio la luz)' : ' · la emparejada NO vio la luz'), !filtrada.length && luzLlego ? 'OK' : 'FALLA', '')
+    const luxAnon = climaAnon ? Object.values(climaAnon.rooms || {}).some((r) => r && 'lux' in r) : null
+    record('A17d', 'privacidad', 'El clima llega a la anónima sin luminosidad (lux)', 'anónima: temperatura sin lux · emparejada: con lux', climaAnon ? (luxAnon ? 'la anónima recibió lux' : 'anónima sin lux') + (climaFull ? ' · emparejada con lux' : ' · la emparejada no recibió lux') : 'sin mensajes de clima en 7 s', climaAnon && !luxAnon && climaFull && Object.values(climaAnon.rooms || {}).every((r) => typeof r.temperature === 'number') ? 'OK' : 'FALLA', 'la luminosidad sube ~180 lx por bombillo: revelaría las luces')
+    close(anon)
     const echoInterior = c.echoes.some((m) => m.type === 'door' && m.id === 'Puerta_Cocina' && m.open === true)
     record('A14h', 'ordenes', 'Una puerta interior se abre sin confirmación', 'se ejecuta directo, sin «confirm»', echoInterior && !interior ? 'ejecutada' : interior ? interior.type : 'sin efecto', echoInterior && !interior ? 'OK' : 'FALLA', 'audit: result=accepted')
     await ask(c, { kind: 'door.set', id: 'Puerta_Cocina', open: false }, 300)
@@ -190,6 +257,19 @@ if (!OP) {
     } else skip('A14e', 'ordenes', 'Código caducado (más de 15 s)', FAST ? 'se pidió --sin-esperas' : 'no hubo código')
     close(c)
   }
+}
+if (!USER1) skip('A18', 'privacidad', 'Clave personal de CASA_USERS', 'no hay CASA_USERS (npm run seguridad:secretos -- --usuario alias:rol)')
+else {
+  const c = await connect(); await sleep(250)
+  const h = await ask(c, { kind: 'session.hello', key: USER1.key })
+  record('A18a', 'privacidad', `Emparejar con la clave personal de «${USER1.alias}»`, `sesión «${USER1.rol}» con user «${USER1.alias}»`, h ? `${h.type} ${h.role ?? h.reason} · user «${h.user ?? '-'}»` : 'sin respuesta', h?.type === 'session' && h.role === USER1.rol && h.user === USER1.alias ? 'OK' : 'FALLA', 'audit: reason=paired, user=' + USER1.alias)
+  if (USER1.rol === 'lector') {
+    await sleep(400)
+    const full = [...c.echoes].reverse().find((m) => m.type === 'snapshot')
+    record('A18b', 'privacidad', 'Un usuario «lector» con clave ve el estado completo', 'snapshot completo', full ? (full.state.restricted ? 'reducido' : 'completo') : 'sin snapshot', full && !full.state.restricted ? 'OK' : 'FALLA', '')
+    expectReject('A18c', 'privacidad', 'Pero no puede mandar órdenes', await ask(c, { kind: 'light.set', id: 'Luz_Garage', patch: { on: true } }), 'forbidden', 'audit: reason=forbidden, user=' + USER1.alias)
+  }
+  close(c)
 }
 if (flag('incluir-revocar')) {
   if (!ADMIN || !OP) skip('A15', 'ordenes', 'Revocar sesiones (admin.revoke)', 'faltan CASA_ADMIN_KEY y CASA_PAIRING_KEY')
@@ -265,8 +345,25 @@ console.log('\nC · Configuración (R2: exposición de servicios y credenciales)
   const cors = await fetch(BASE + '/api/health', { headers: { Origin: 'https://sitio-malicioso.example' } }).catch(() => null)
   const aco = cors ? cors.headers.get('access-control-allow-origin') : '?'
   record('C2', 'config', 'CORS: un origen no permitido no recibe Access-Control-Allow-Origin', 'sin cabecera', aco ? 'cabecera = ' + aco : 'sin cabecera', !aco ? 'OK' : 'FALLA', '')
-  const inj = await fetch(BASE + '/api/history/climate?room=' + encodeURIComponent('a" or 1==1 //')).catch(() => null)
-  record('C3', 'config', 'Inyección en el parámetro room de la consulta Flux', 'HTTP 400', inj ? 'HTTP ' + inj.status : 'sin respuesta', inj && inj.status === 400 ? 'OK' : 'FALLA', '')
+  // Con una clave válida, para llegar a la validación de «room» (sin clave se corta antes con 401)
+  const inj = await fetch(BASE + '/api/history/climate?room=' + encodeURIComponent('a" or 1==1 //'), { headers: OP ? { Authorization: 'Bearer ' + OP } : {} }).catch(() => null)
+  const injOk = OP ? 400 : 401
+  record('C3', 'config', 'Inyección en el parámetro room de la consulta Flux' + (OP ? ' (con clave válida)' : ' (sin clave)'), 'HTTP ' + injOk, inj ? 'HTTP ' + inj.status : 'sin respuesta', inj && inj.status === injOk ? 'OK' : 'FALLA', '')
+  const hp = (headers) => fetch(BASE + '/api/history/power?bucket=60', { headers }).catch(() => null)
+  const sinClave = await hp({})
+  record('C6', 'privacidad', 'Historial sin clave (curl anónimo)', 'HTTP 401', sinClave ? 'HTTP ' + sinClave.status : 'sin respuesta', sinClave && sinClave.status === 401 ? 'OK' : 'FALLA', '31 días de consumo dirían cuándo hay alguien en casa')
+  const malaClave = await hp({ Authorization: 'Bearer clave-que-no-existe-' + randomBytes(4).toString('hex') })
+  record('C7', 'privacidad', 'Historial con una clave inválida', 'HTTP 401', malaClave ? 'HTTP ' + malaClave.status : 'sin respuesta', malaClave && malaClave.status === 401 ? 'OK' : 'FALLA', '')
+  if (OP) {
+    const conClave = await hp({ Authorization: 'Bearer ' + OP })
+    record('C8', 'privacidad', 'Historial con una clave válida (control positivo)', 'cualquier cosa menos 401/429 (200, o 502 si InfluxDB no responde)', conClave ? 'HTTP ' + conClave.status : 'sin respuesta', conClave && ![401, 429].includes(conClave.status) ? 'OK' : 'FALLA', '')
+  } else skip('C8', 'privacidad', 'Historial con una clave válida', 'falta CASA_PAIRING_KEY')
+  const pre = (origin) => fetch(BASE + '/api/history/power', { method: 'OPTIONS', headers: { Origin: origin, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' } }).catch(() => null)
+  const preOk = await pre('http://localhost:5173')
+  const allowH = preOk ? String(preOk.headers.get('access-control-allow-headers') || '') : ''
+  record('C9a', 'config', 'CORS previo (OPTIONS) desde el frontend permitido deja enviar Authorization', 'Allow-Origin = el frontend y Allow-Headers con Authorization', preOk ? `HTTP ${preOk.status} · origin ${preOk.headers.get('access-control-allow-origin') || '-'} · headers ${allowH || '-'}` : 'sin respuesta', preOk && preOk.headers.get('access-control-allow-origin') === 'http://localhost:5173' && /authorization/i.test(allowH) ? 'OK' : 'FALLA', 'si CASA_ALLOWED_ORIGINS no incluye http://localhost:5173, esta prueba no aplica')
+  const preMal = await pre('https://sitio-malicioso.example')
+  record('C9b', 'config', 'CORS previo desde un origen NO permitido', 'sin Access-Control-Allow-Origin', preMal ? (preMal.headers.get('access-control-allow-origin') ? 'cabecera = ' + preMal.headers.get('access-control-allow-origin') : 'sin cabecera') : 'sin respuesta', preMal && !preMal.headers.get('access-control-allow-origin') ? 'OK' : 'FALLA', '')
   const ed = await fetch(BASE + '/flows').catch(() => null)
   const edOpen = ed && ed.status === 200
   record('C4', 'config', 'El editor/API de administración de Node-RED exige autenticación (adminAuth)', 'HTTP 401', ed ? 'HTTP ' + ed.status : 'sin respuesta', ed && (ed.status === 401 || ed.status === 404) ? 'OK' : 'FALLA', edOpen ? 'ABIERTO: cualquiera con acceso al puerto puede leer y cambiar el flujo. En local es tolerable; en un servidor público NO.' : '')

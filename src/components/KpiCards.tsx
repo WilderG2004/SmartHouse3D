@@ -26,16 +26,18 @@ function Kpi({
   alert?: boolean
 }) {
   return (
-    <div className={`card p-4 ${alert ? 'alarm-pulse !border-bad' : ''}`}>
-      <div className="flex items-center gap-2.5 text-sm font-medium text-mute">
+    <div className={`glass min-w-0 rounded-2xl px-3.5 py-2.5 ${alert ? 'alarm-pulse !border-bad' : ''}`} title={hint}>
+      <div className="flex items-center gap-3">
         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${tint}`}>{icon}</span>
-        {label}
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-mute">{label}</p>
+          <div className="flex items-baseline gap-1">
+            <span className={`text-xl font-bold tracking-tight ${tone}`}>{value}</span>
+            {unit && <span className="text-sm font-medium text-mute">{unit}</span>}
+          </div>
+        </div>
       </div>
-      <div className="mt-3 flex items-baseline gap-1.5">
-        <span className={`text-2xl font-bold tracking-tight 2xl:text-3xl ${tone}`}>{value}</span>
-        {unit && <span className="text-base font-medium text-mute">{unit}</span>}
-      </div>
-      <p className="mt-1.5 text-xs leading-snug text-mute">{hint}</p>
+      <p className="mt-1 truncate text-xs text-mute">{hint}</p>
     </div>
   )
 }
@@ -49,6 +51,7 @@ export function KpiCards() {
   const world = useHouseStore((s) => s.world)
   const smoke = useHouseStore((s) => s.smoke)
   const sec = useHouseStore((s) => s.security)
+  const restricted = useHouseStore((s) => s.restricted)
 
   const on = Object.values(lights).filter((l) => l.on).length
   const rooms = ROOMS.map((r) => climate[r.id]).filter(Boolean)
@@ -59,15 +62,17 @@ export function KpiCards() {
   const danger = sec.alarm || smoke.alarm
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Kpi
         icon={<Zap size={18} />}
         tint="bg-warm-soft text-warm-strong"
         label="Potencia actual"
-        value={fmtNumber(power.watts, 0)}
-        unit="W"
+        value={restricted ? 'Oculta' : fmtNumber(power.watts, 0)}
+        unit={restricted ? undefined : 'W'}
         hint={
-          b
+          restricted
+            ? 'El consumo y las luces no se muestran en la vista pública'
+            : b
             ? `Base ${fmtNumber(b.base)} · luces ${fmtNumber(b.lights)} (${on}/${LIGHTS.length}) · A/C ${fmtNumber(b.ac)} · enchufes ${fmtNumber(b.plugs)} W`
             : `${on} de ${LIGHTS.length} luces encendidas`
         }
@@ -76,9 +81,9 @@ export function KpiCards() {
         icon={<Receipt size={18} />}
         tint="bg-brand-soft text-brand-strong"
         label="Energía y costo estimado"
-        value={fmtNumber(power.kwhTotal, 3)}
-        unit="kWh"
-        hint={`≈ $${fmtNumber(cost)} COP a $${fmtNumber(TARIFF_COP_PER_KWH)}/kWh · ritmo ×${METER.energyTimeScale}`}
+        value={restricted ? 'Oculta' : fmtNumber(power.kwhTotal, 3)}
+        unit={restricted ? undefined : 'kWh'}
+        hint={restricted ? 'Empareja la pantalla para ver el consumo' : `≈ $${fmtNumber(cost)} COP a $${fmtNumber(TARIFF_COP_PER_KWH)}/kWh · ritmo ×${METER.energyTimeScale}`}
       />
       <Kpi
         icon={<Thermometer size={18} style={{ color: tempInk(avgT) }} />}
@@ -89,10 +94,10 @@ export function KpiCards() {
         hint={`Exterior ${fmtNumber(world.outdoorTemp, 1)}° · humedad media ${fmtNumber(avgH)} %`}
       />
       <Kpi
-        icon={danger ? <ShieldAlert size={18} /> : sec.mode === 'disarmed' ? <ShieldOff size={18} /> : <ShieldCheck size={18} />}
-        tint={danger ? 'bg-bad-soft text-bad-strong' : sec.mode === 'disarmed' ? 'bg-raised text-mute' : 'bg-ok-soft text-ok-strong'}
+        icon={danger ? <ShieldAlert size={18} /> : restricted || sec.mode === 'disarmed' ? <ShieldOff size={18} /> : <ShieldCheck size={18} />}
+        tint={danger ? 'bg-bad-soft text-bad-strong' : restricted || sec.mode === 'disarmed' ? 'bg-raised text-mute' : 'bg-ok-soft text-ok-strong'}
         label="Seguridad"
-        value={sec.alarm ? 'ALARMA' : MODE_TEXT[sec.mode]}
+        value={restricted ? 'Oculta' : sec.alarm ? 'ALARMA' : MODE_TEXT[sec.mode]}
         tone={sec.alarm ? 'text-bad-strong' : 'text-fg'}
         alert={danger}
         hint={

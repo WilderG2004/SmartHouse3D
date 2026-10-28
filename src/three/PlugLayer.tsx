@@ -58,6 +58,9 @@ function PlugNode({ def, position }: { def: PlugDef; position: THREE.Vector3 }) 
 }
 
 export function PlugLayer({ markers }: { markers: Markers }) {
+  // Vista pública: qué aparato está encendido delata a la persona (el servidor ni siquiera manda su estado)
+  const restricted = useHouseStore((s) => s.restricted)
+  if (restricted) return null
   return (
     <>
       {PLUGS.map((def) => {

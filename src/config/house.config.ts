@@ -113,11 +113,17 @@ export const PIRS: PirDef[] = [
  *      las haría rotar sobre sí mismas atravesando el marco.
  *   3. La puerta del garaje (Cube.037) tiene el origen a ~67 unidades de distancia
  *      (comparte origen con los muros) y además no gira: se desliza hacia arriba.
+ *   4. Las manijas son piezas sueltas (Plano.001 … Plano.011) que no cuelgan de su puerta:
+ *      sin `handle` se quedarían flotando en el marco al abrir.
  *
- * Aquí se declara qué malla es cada puerta y hacia dónde abre. Para arreglarlo "de verdad"
+ * Aquí se declara qué malla es cada puerta, su manija y hacia dónde abre. Para arreglarlo "de verdad"
  * en Blender, ver el README (sección «Puertas»).
  *
- * `mesh` es el nombre que ve three.js: GLTFLoader QUITA los puntos ("Cube.032" → "Cube032").
+ * `mesh` y `handle` son el nombre que ve three.js: GLTFLoader QUITA los puntos ("Cube.032" → "Cube032").
+ *
+ * Sentidos elegidos (medidos sobre el plano del modelo): cada puerta abre HACIA DENTRO de la habitación a la que da
+ * paso y queda casi pegada a una pared, para no tapar el pasillo. Las tres de la lavandería abren en el sentido
+ * cocina → lavandería → garaje.
  */
 export interface DoorDef {
   /** Clave de estado. Para puertas con sensor = nombre del Empty (Sensor_Puerta_*). */
@@ -126,9 +132,11 @@ export interface DoorDef {
   /** Nombre de la malla en three.js (sin puntos) */
   mesh: string
   kind: 'swing' | 'slide'
-  /** swing: extremo del eje largo donde está la bisagra. Si abre "al revés", cámbialo. */
+  /** swing: malla de la manija. Gira junto con la hoja y fija la bisagra en el borde contrario. */
+  handle?: string
+  /** swing: extremo del eje largo donde está la bisagra. Sin valor: el lado opuesto a la manija (o 'min' si no hay manija). */
   hinge?: 'min' | 'max'
-  /** swing: sentido del giro. Si choca con el mueble equivocado, pon -1. */
+  /** swing: sentido del giro. Si la puerta abre hacia el lado equivocado (p. ej. hacia el pasillo), cambia el signo. */
   dir?: 1 | -1
   /** true = tiene un Empty `id` en el modelo (muestra etiqueta flotante) */
   sensor?: boolean
@@ -137,18 +145,18 @@ export interface DoorDef {
 export const DOOR_OPEN_ANGLE = Math.PI / 2 // 90°
 
 export const DOORS: DoorDef[] = [
-  { id: 'Sensor_Puerta_Entrada', label: 'Puerta de entrada', mesh: 'Cube032', kind: 'swing', hinge: 'min', dir: -1, sensor: true },
+  { id: 'Sensor_Puerta_Entrada', label: 'Puerta de entrada', mesh: 'Cube032', handle: 'Plano009', kind: 'swing', dir: 1, sensor: true }, // hacia la sala de entrada
   { id: 'Sensor_Puerta_Garage', label: 'Puerta del garaje', mesh: 'Cube037', kind: 'slide', sensor: true },
-  { id: 'Puerta_Sala_Principal', label: 'Entrada · Sala principal', mesh: 'Cube016', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Cocina', label: 'Entrada · Cocina', mesh: 'Cube030', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Lavanderia_2', label: 'Entrada · Lavandería 2', mesh: 'Cube028', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Lavanderia', label: 'Entrada · Lavandería', mesh: 'Cube026', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Dormitorio_Principal', label: 'Entrada · Dormitorio principal', mesh: 'Cube020', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Dormitorio_Principal_Interior', label: 'Interior · Dormitorio principal', mesh: 'Cube018', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Dormitorio_3', label: 'Interior · Dormitorio 3', mesh: 'Cube022', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Sala_Estudio', label: 'Interior · Sala de estudio', mesh: 'Cube024', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Bano_Visitas', label: 'Interior · Baño de visitas', mesh: 'Cube034', kind: 'swing', hinge: 'min', dir: 1 },
-  { id: 'Puerta_Pasillo', label: 'Interior · Pasillo', mesh: 'Cube036', kind: 'swing', hinge: 'min', dir: 1 },
+  { id: 'Puerta_Sala_Principal', label: 'Entrada · Sala principal', mesh: 'Cube016', handle: 'Plano001', kind: 'swing', dir: 1 }, // hacia la sala principal
+  { id: 'Puerta_Cocina', label: 'Entrada · Cocina', mesh: 'Cube030', handle: 'Plano008', kind: 'swing', dir: -1 }, // cocina → lavandería
+  { id: 'Puerta_Lavanderia_2', label: 'Entrada · Lavandería 2', mesh: 'Cube028', handle: 'Plano007', kind: 'swing', dir: -1 },
+  { id: 'Puerta_Lavanderia', label: 'Entrada · Lavandería', mesh: 'Cube026', handle: 'Plano006', kind: 'swing', dir: -1 }, // → garaje
+  { id: 'Puerta_Dormitorio_Principal', label: 'Entrada · Dormitorio principal', mesh: 'Cube020', handle: 'Plano003', kind: 'swing', dir: 1 }, // hacia el dormitorio
+  { id: 'Puerta_Dormitorio_Principal_Interior', label: 'Interior · Dormitorio principal', mesh: 'Cube018', handle: 'Plano002', kind: 'swing', dir: 1 }, // hacia el closet
+  { id: 'Puerta_Dormitorio_3', label: 'Interior · Dormitorio 3', mesh: 'Cube022', handle: 'Plano004', kind: 'swing', dir: 1 }, // hacia el dormitorio
+  { id: 'Puerta_Sala_Estudio', label: 'Interior · Sala de estudio', mesh: 'Cube024', handle: 'Plano005', kind: 'swing', dir: 1 }, // hacia el estudio
+  { id: 'Puerta_Bano_Visitas', label: 'Interior · Baño de visitas', mesh: 'Cube034', handle: 'Plano010', kind: 'swing', dir: 1 }, // hacia el baño principal
+  { id: 'Puerta_Pasillo', label: 'Interior · Pasillo', mesh: 'Cube036', handle: 'Plano011', kind: 'swing', dir: 1 }, // hacia el baño de visitas
 ]
 
 /* ──────────────────────────── Medidor de energía ──────────────────────────── */
@@ -199,45 +207,163 @@ export const LIGHT_DISTANCE = 48
 export const ALARM_FLASH_HZ = 1.8
 export const AMBIENT_DEFAULT = 0.7
 
-/* ─────────────────────── Corrección de materiales ─────────────────────── */
+/* ─────────────────────── Materiales por colección (Blender) ─────────────────────── */
 
+/** Tipo de superficie que usan el mini-mapa y los choques del recorrido (`floor` no frena; lo demás sí). */
 export type SurfaceKind = 'floor' | 'wall' | 'frame' | 'door' | 'furniture'
 
 /**
- * Cómo interpretar los materiales con nombre del .glb exportado.
- * (En este modelo: "Material.001" = verde = muros, "Material" = magenta = marcos.)
+ * Las colecciones de Blender. El exportador glTF las aplanó (todas las mallas cuelgan de la escena), así que aquí se
+ * vuelven a armar por NOMBRE de malla (el que ve three.js, sin puntos: "Cubo.052" → "Cubo052"). Los nombres y la cuenta
+ * de cada una salen de leer el .glb: paredes 1, piso 4, ventanas 11 (+ el Empty Cube003), puertas 23 (hojas y marcos),
+ * chapas 12, y los 67 muebles «Cubo…» repartidos como en Blender.
  */
-export const MATERIAL_ROLES: Record<string, SurfaceKind> = {
-  'Material.001': 'wall',
-  Material: 'frame',
+export type CollectionId =
+  | 'paredes'
+  | 'piso'
+  | 'ventanas'
+  | 'puertas'
+  | 'chapas'
+  | 'camas'
+  | 'mesasSillasSofas'
+  | 'mesaTv'
+  | 'armarios'
+  | 'mesitas'
+  | 'bano'
+  | 'cocina'
+  | 'lavanderia'
+
+const serie = (prefix: string, nums: number[]) => nums.map((n) => (n === 0 ? prefix : prefix + String(n).padStart(3, '0')))
+const rango = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i)
+
+export const COLLECTIONS: Record<CollectionId, { label: string; meshes: string[]; furniture?: boolean }> = {
+  paredes: { label: 'Paredes', meshes: ['Cube'] },
+  piso: { label: 'Piso', meshes: serie('Plano', rango(12, 15)) },
+  ventanas: { label: 'Ventanas', meshes: serie('Cube', [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12]) },
+  puertas: { label: 'Puertas', meshes: serie('Cube', [14, 15, 16, ...rango(18, 37)]) },
+  chapas: { label: 'Chapas de la puerta', meshes: serie('Plano', rango(0, 11)) },
+  camas: { label: 'Camas', meshes: serie('Cubo', [0, 1, 2]), furniture: true },
+  mesitas: { label: 'Mesitas de noche', meshes: serie('Cubo', [3, 4, 5, 6]), furniture: true },
+  mesaTv: { label: 'Mesa de TV', meshes: serie('Cubo', [7, 12, 13, 14, 15, 22]), furniture: true },
+  armarios: { label: 'Armarios', meshes: serie('Cubo', [8, 9, 10, 11]), furniture: true },
+  lavanderia: { label: 'Lavandería', meshes: serie('Cubo', rango(52, 55)), furniture: true },
+  cocina: { label: 'Decoración cocina', meshes: serie('Cubo', rango(57, 60)), furniture: true },
+  bano: { label: 'Decoración baño', meshes: serie('Cubo', [32, 33, 34, 56, ...rango(61, 66)]), furniture: true },
+  mesasSillasSofas: {
+    label: 'Mesas, sillas y sofás',
+    meshes: serie('Cubo', [...rango(16, 21), 23, 24, ...rango(25, 31), ...rango(35, 51)]),
+    furniture: true,
+  },
 }
 
 /**
- * Colores de la casa (estilo escandinavo, calido y tranquilo).
- *  - Muros en blanco calido: la luz rebota y la casa se ve limpia.
- *  - Piso de roble claro: el unico color "calido" grande, da la sensacion de hogar.
- *  - Puertas en nogal medio: contraste suave con los muros.
- *  - Muebles en neutros calidos con 2 toques verde azulado, el mismo color de la interfaz, para que todo se vea de una sola paleta.
+ * Acabados PBR. `physical` = MeshPhysicalMaterial (vidrio, cerámica esmaltada); el resto, MeshStandardMaterial.
+ * Colores de casa real: muros marfil, piso de roble claro, puertas de nogal, textiles neutros con dos acentos.
  */
-export const PALETTE: Record<SurfaceKind, string[]> = {
-  floor: ['#cfae85'],
-  wall: ['#f6f3ee'],
-  frame: ['#ffffff'],
-  door: ['#8a6a4c'],
-  furniture: ['#e6dfd2', '#d3c8b6', '#bfae96', '#a9b9b4', '#8fa8a3', '#c9d3d0'],
+export interface Finish {
+  color: string
+  roughness: number
+  metalness?: number
+  physical?: { transmission?: number; ior?: number; thickness?: number; clearcoat?: number; clearcoatRoughness?: number }
+  /** Textura de tablas de madera generada en el navegador (sin descargar imágenes) */
+  woodPlanks?: boolean
 }
 
-/** Acabado de cada superficie: 1 = mate total. Pisos y puertas con un poco mas de brillo se ven mas "reales". */
-export const SURFACE_FINISH: Record<SurfaceKind, { roughness: number }> = {
-  floor: { roughness: 0.7 },
-  wall: { roughness: 0.95 },
-  frame: { roughness: 0.8 },
-  door: { roughness: 0.65 },
-  furniture: { roughness: 0.85 },
+export type FinishId =
+  | 'wallPaint'
+  | 'floorOak'
+  | 'glass'
+  | 'doorWalnut'
+  | 'doorFrameOak'
+  | 'handleSteel'
+  | 'cabinetOak'
+  | 'tvWalnut'
+  | 'tableWood'
+  | 'linenPearl'
+  | 'fabricBeige'
+  | 'fabricPetrol'
+  | 'fabricTerracotta'
+  | 'ceramic'
+  | 'steel'
+  | 'quartz'
+
+export const FINISHES: Record<FinishId, Finish> = {
+  wallPaint: { color: '#f4f1ea', roughness: 0.85 },
+  floorOak: { color: '#ffffff', roughness: 0.35, metalness: 0.05, woodPlanks: true },
+  glass: { color: '#e4f3f7', roughness: 0.05, physical: { transmission: 0.9, ior: 1.5, thickness: 0.3 } },
+  doorWalnut: { color: '#6e4b33', roughness: 0.5 },
+  doorFrameOak: { color: '#a98058', roughness: 0.55 },
+  handleSteel: { color: '#d5d8dc', roughness: 0.2, metalness: 0.9 },
+  cabinetOak: { color: '#9c7552', roughness: 0.55 },
+  tvWalnut: { color: '#5a3d2b', roughness: 0.45 },
+  tableWood: { color: '#7a5639', roughness: 0.45 },
+  linenPearl: { color: '#d5d7da', roughness: 0.9 },
+  fabricBeige: { color: '#d8c6a6', roughness: 0.9 },
+  fabricPetrol: { color: '#2f5f6e', roughness: 0.9 },
+  fabricTerracotta: { color: '#b8613f', roughness: 0.9 },
+  ceramic: { color: '#f7f7f4', roughness: 0.15, physical: { clearcoat: 0.6, clearcoatRoughness: 0.1 } },
+  steel: { color: '#c8ccd1', roughness: 0.22, metalness: 0.9 },
+  quartz: { color: '#ecebe7', roughness: 0.25, physical: { clearcoat: 0.35, clearcoatRoughness: 0.2 } },
 }
 
-/** true = conserva el color base del material original (si tenía uno propio). */
-export const KEEP_ORIGINAL_COLORS = false
+/** Acabado de cada colección (las hojas de puerta, los textiles y los electrodomésticos se afinan abajo). */
+export const COLLECTION_FINISH: Record<CollectionId, FinishId> = {
+  paredes: 'wallPaint',
+  piso: 'floorOak',
+  ventanas: 'glass',
+  puertas: 'doorFrameOak',
+  chapas: 'handleSteel',
+  camas: 'linenPearl',
+  mesitas: 'cabinetOak',
+  mesaTv: 'tvWalnut',
+  armarios: 'cabinetOak',
+  lavanderia: 'ceramic',
+  cocina: 'steel',
+  bano: 'ceramic',
+  mesasSillasSofas: 'fabricBeige',
+}
+
+const todas = (names: string[], finish: FinishId) => Object.fromEntries(names.map((n) => [n, finish])) as Record<string, FinishId>
+
+/** Excepciones por malla: mesas de madera, isla y mesón de cuarzo, electrodomésticos de acero, sofás y sillas en color. */
+export const MESH_FINISH: Record<string, FinishId> = {
+  ...todas(serie('Cubo', [23, 24, 26, 31, 41]), 'tableWood'), // mesas de centro, escritorio, comedor
+  ...todas(serie('Cubo', [16, 18, 20, 21, 36, 37, 38, 39, 40]), 'fabricTerracotta'), // poltronas y bancos
+  ...todas(serie('Cubo', [19, 25, 27, 28, 29, 30]), 'fabricPetrol'), // sofás de las salas y puffs
+  Cubo017: 'linenPearl',
+  Cubo035: 'quartz', // isla de la cocina
+  Cubo060: 'quartz', // mesón de la cocina
+  Cubo053: 'steel', // lavadora y secadora
+  Cubo054: 'steel',
+  Cubo066: 'glass', // división de la ducha
+}
+
+/** Paredes «cortadas»: altura (u del modelo) a la que se cortan para ver el interior. Las puertas miden ~4,8. */
+export const WALL_CUT_HEIGHT = 5.4
+
+/* ─────────────────────── Luces: tonos rápidos ─────────────────────── */
+
+export const LIGHT_PRESETS = [
+  { id: 'warm', label: 'Cálida', hint: '3000 K', color: '#ffb46b' },
+  { id: 'cold', label: 'Fría', hint: '6000 K', color: '#e6efff' },
+  { id: 'alert', label: 'Alerta', hint: 'rojo', color: '#ff3b3b' },
+] as const
+
+/* ─────────────────────── Cámara: vistas por zona ─────────────────────── */
+
+/**
+ * Botones de cámara del visor. Cada zona apunta al centro de sus luces (Empties «Luz_*» de esas habitaciones) y la mira
+ * en diagonal desde `distance` unidades. Para agregar una zona basta con listar sus habitaciones (`LIGHTS[].room`).
+ */
+export const CAMERA_ZONES = [
+  { id: 'sala', label: 'Sala / TV', rooms: ['Sala principal', 'Sala de entrada'], distance: 36 },
+  { id: 'dormitorios', label: 'Habitaciones', rooms: ['Dormitorio principal', 'Dormitorio 2', 'Dormitorio 3'], distance: 40 },
+  { id: 'cocina', label: 'Cocina', rooms: ['Cocina'], distance: 30 },
+  { id: 'banos', label: 'Baños', rooms: ['Baño principal', 'Baño de visitas'], distance: 26 },
+  { id: 'lavanderia', label: 'Lavandería', rooms: ['Lavandería', 'Garaje'], distance: 30 },
+] as const
+
+export type CameraZoneId = (typeof CAMERA_ZONES)[number]['id']
 
 /* ───────────────────────────── Habitaciones ───────────────────────────── */
 

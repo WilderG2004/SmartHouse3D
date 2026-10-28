@@ -437,7 +437,7 @@
             "type": "influxdb",
             "uid": "influx-casa-iot"
           },
-          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and (r.kind =~ /^security\\./ or r.kind == \"confirm\" or r.kind == \"scene.apply\" or r.kind == \"door.set\"))\n  |> pivot(rowKey: [\"_time\", \"kind\", \"reason\", \"result\", \"role\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"kind\", \"reason\", \"result\", \"role\", \"id\", \"session\", \"count\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)"
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and (r.kind =~ /^security\\./ or r.kind == \"confirm\" or r.kind == \"scene.apply\" or r.kind == \"door.set\"))\n  |> pivot(rowKey: [\"_time\", \"kind\", \"reason\", \"result\", \"role\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"kind\", \"reason\", \"result\", \"role\", \"id\", \"user\", \"session\", \"count\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)"
         }
       ],
       "options": {
@@ -496,7 +496,7 @@
             "type": "influxdb",
             "uid": "influx-casa-iot"
           },
-          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r.result == \"rejected\")\n  |> pivot(rowKey: [\"_time\", \"kind\", \"reason\", \"result\", \"role\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"kind\", \"reason\", \"result\", \"role\", \"id\", \"session\", \"count\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 100)"
+          "query": "from(bucket: \"casa_iot\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"audit\" and r.result == \"rejected\")\n  |> pivot(rowKey: [\"_time\", \"kind\", \"reason\", \"result\", \"role\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"kind\", \"reason\", \"result\", \"role\", \"id\", \"user\", \"session\", \"count\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 100)"
         }
       ],
       "options": {

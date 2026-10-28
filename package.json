@@ -13,6 +13,7 @@
     "nodered:iniciar": "node infra/iniciar-nodered.mjs",
     "seguridad:secretos": "node infra/generar-secretos.mjs",
     "seguridad:tokens": "node infra/crear-tokens-influx.mjs",
+    "seguridad:retencion": "node infra/aplicar-retencion.mjs",
     "seguridad:probar": "node infra/pruebas-seguridad.mjs",
     "seguridad:integridad": "node infra/verificar-integridad.mjs",
     "seguridad:vercel": "node infra/despliegue/generar-vercel-json.mjs",

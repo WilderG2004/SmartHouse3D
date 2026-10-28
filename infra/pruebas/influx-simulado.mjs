@@ -10,6 +10,7 @@
  *   GET  /health         estado (versión 2.7 simulada)
  *   GET/POST /api/v2/orgs · /api/v2/buckets · /api/v2/authorizations   lo mínimo para ejecutar infra/setup-local.mjs
  *                        (crea buckets y tokens con permisos de escritura O de lectura, y se comprueban en cada llamada)
+ *   PATCH /api/v2/buckets/:id   cambia la retención (infra/aplicar-retencion.mjs); solo guarda la regla, no borra puntos
  *   POST /__demo/manipular   simula a un atacante con acceso directo al almacén:
  *        {"accion":"borrar"|"alterar"|"inyectar", "bucket":"casa_iot", "medicion":"env", "n":3}
  *   GET  /__demo/estado  cuántos puntos hay por bucket y medición
@@ -180,6 +181,14 @@ http.createServer((req, res) => {
         const b = { id: 'bucket-' + (bucketsMeta.length + 1), name: a.name, orgID: a.orgID, retentionRules: a.retentionRules || [] }
         bucketsMeta.push(b); if (!buckets.has(b.name)) buckets.set(b.name, new Map())
         return json(201, b)
+      }
+      // Cambiar la retención de un bucket que ya existe (infra/aplicar-retencion.mjs). Solo se guarda la regla: no borra puntos.
+      if (url.pathname.startsWith('/api/v2/buckets/') && req.method === 'PATCH') {
+        const b = bucketsMeta.find((x) => x.id === url.pathname.split('/').pop())
+        if (!b) return json(404, { code: 'not found', message: 'bucket no encontrado' })
+        const a = JSON.parse(cuerpo)
+        if (Array.isArray(a.retentionRules)) b.retentionRules = a.retentionRules
+        return json(200, b)
       }
       if (url.pathname === '/api/v2/authorizations' && req.method === 'GET') return json(200, { authorizations: tokensCreados })
       if (url.pathname.startsWith('/api/v2/authorizations/') && req.method === 'DELETE') {

@@ -17,6 +17,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { leer } from './lib/envfile.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const args = {}
@@ -159,16 +160,21 @@ if (hh.ok && hh.json?.status === 'ok') ok(`API del flujo: ${NR}${root}/api/healt
 else warn(`/api/health no respondió (HTTP ${hh.status}). Mira el editor de Node-RED: ¿algún nodo con triángulo rojo?`)
 
 note('Comprobando que Node-RED guarda y lee de InfluxDB con su propio token (hasta 60 s)…')
+// El historial exige la clave de un usuario: la de la terminal o la de infra/.env (nunca se imprime)
+const envFile = leer(join(here, '.env')).valores
+const claveApi = process.env.CASA_ADMIN_KEY || process.env.CASA_PAIRING_KEY || envFile.CASA_ADMIN_KEY || envFile.CASA_PAIRING_KEY || ''
 let points = -1, last = null
 const deadline = Date.now() + 60000
 do {
   const to = Date.now()
-  last = await http(`${NR}${root}/api/history/power?from=${to - 5 * 60000}&to=${to}&bucket=5`)
+  last = await http(`${NR}${root}/api/history/power?from=${to - 5 * 60000}&to=${to}&bucket=5`, { headers: claveApi ? { Authorization: `Bearer ${claveApi}` } : {} })
+  if (last.status === 401) break
   points = last.ok && Array.isArray(last.json) ? last.json.length : -1
   if (points > 0) break
   await new Promise((r) => setTimeout(r, 5000))
 } while (Date.now() < deadline)
 if (points > 0) ok(`InfluxDB responde: ${points} lecturas de consumo en los últimos 5 minutos`)
+else if (last?.status === 401) warn('El historial exige una clave (Authorization: Bearer). Define CASA_ADMIN_KEY en la terminal o en infra/.env para esta comprobación.')
 else if (last?.status === 502) { warn('Node-RED no pudo consultar InfluxDB.'); note(`Detalle: ${String(last.json?.detail ?? last.text).slice(0, 160)}`); note('Abre el nodo «InfluxDB · … · lectura» en el editor y revisa que el token sea el de «Node-RED lectura · …».') }
 else warn('Aún no hay lecturas en InfluxDB. Espera un minuto y abre  ' + `${NR}${root}/api/history/power?bucket=10`)
 

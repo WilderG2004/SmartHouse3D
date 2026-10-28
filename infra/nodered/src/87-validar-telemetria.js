@@ -7,7 +7,11 @@
 //   unknown_device  el dispositivo existe en la configuración de la casa (y, si viene de /api/ingest, acepta ingesta)
 //   bad_signature   HMAC-SHA256 correcto con la clave de ESE dispositivo (comparación en tiempo constante)
 //   stale           la marca de tiempo está dentro de la ventana (telemetry.windowMs)
-//   replay          el número de secuencia es MAYOR que el último aceptado de ese dispositivo
+//   replay          el número de secuencia es MAYOR que el último aceptado de ese dispositivo. Para los dispositivos
+//                   externos (/api/ingest) el último número se guarda EN DISCO (contexto «persistente», ver settings.js)
+//                   y, tras un reinicio, además se rechaza lo firmado ANTES de que arrancara Node-RED: así reiniciar no
+//                   abre una ventana para reenviar mensajes capturados. Un dispositivo real debe usar un seq que no
+//                   vuelva a empezar al reiniciarse él (p. ej. milisegundos de su reloj).
 //   schema / range  medición, etiquetas y campos permitidos, con tipo y rango válidos; todo lo demás se descarta
 //   anomaly         salto físicamente imposible respecto de la lectura anterior → CUARENTENA (no entra como dato confiable)
 // Además agrupa los puntos aceptados en bloques de tiempo y, al cerrar cada bloque, escribe su HUELLA:
@@ -22,6 +26,9 @@ const envs = Array.isArray(msg.payload) ? msg.payload : [];
 const reg = RT.reg || (RT.reg = Object.fromEntries(T.devices.map((d) => [d.dev, d])));
 const good = [], audits = [], results = [];
 const ingest = !!msg._ingest;
+// Últimos números de secuencia de los dispositivos externos, en disco (sobreviven a un reinicio). Solo se lee si hace falta.
+const seen = ingest ? (global.get('antiReplay', 'persistente') || {}) : null;
+let seenDirty = false;
 const SAFE = /^[^\u0000-\u001f]{1,80}$/;
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -52,9 +59,11 @@ envs.forEach((e, i) => {
   try { b = JSON.parse(e.body); } catch (x) { return fail('envelope'); }
   if (!b || b.v !== 1 || b.dev !== e.dev || typeof b.m !== 'string' || !b.tags || typeof b.tags !== 'object' || Array.isArray(b.tags) || !b.f || typeof b.f !== 'object' || Array.isArray(b.f) || !Number.isInteger(b.ts) || !Number.isInteger(b.seq) || b.seq < 0) return fail('envelope');
   if (Math.abs(now - b.ts) > T.windowMs) return fail('stale');
-  const last = RT.lastSeq[e.dev] || 0;
+  if (ingest && b.ts < RT.startedAt) return fail('stale');   // firmado antes de este arranque: pudo aceptarse antes del reinicio
+  const last = Math.max(RT.lastSeq[e.dev] || 0, (ingest && seen[e.dev]) || 0);
   if (b.seq <= last) return fail('replay');
   RT.lastSeq[e.dev] = b.seq;
+  if (ingest) { seen[e.dev] = b.seq; seenDirty = true; }
 
   const sch = T.schema[b.m];
   if (!sch || b.m !== d.m) return fail('schema');
@@ -91,6 +100,8 @@ envs.forEach((e, i) => {
   const blk = Math.floor(b.ts / T.blockMs);
   (RT.blocks[blk] || (RT.blocks[blk] = { hashes: {} })).hashes[b.m + '|' + JSON.stringify(sortedPairs(tags)) + '|' + b.ts] = sha256Hex(canon(b.m, tags, b.f, b.ts));
 });
+
+if (seenDirty) global.set('antiReplay', seen, 'persistente');   // se escribe a disco en ≤ 1 s (flushInterval)
 
 // cerrar bloques vencidos y escribir su huella (en orden, para encadenarlas)
 const digests = [];

@@ -149,17 +149,23 @@ export type ConnectionStatus =
   | 'reconnecting'
   | 'disconnected'
 
+/**
+ * Los campos opcionales NO llegan a una pantalla sin emparejar (restricted: true): delatan si hay alguien en casa
+ * (pir, doors, security, events, alerts, lights, power, acs, plugs). A esa pantalla el clima le llega sin `lux`.
+ */
 export interface HouseSnapshot {
-  lights: Record<string, LightState>
+  lights?: Record<string, LightState>
   smoke: SmokeState
-  pir: Record<string, PirState>
-  doors: Record<string, DoorState>
-  power: PowerState
+  pir?: Record<string, PirState>
+  doors?: Record<string, DoorState>
+  power?: PowerState
   climate: Record<string, RoomClimate>
-  acs: Record<string, AcState>
-  plugs: Record<string, PlugState>
-  security: SecurityState
+  acs?: Record<string, AcState>
+  plugs?: Record<string, PlugState>
+  security?: SecurityState
   world: WorldState
+  /** true = vista reducida de una conexión anónima (el servidor omitió lo sensible) */
+  restricted?: boolean
   /** Últimos eventos del log, más recientes primero (para quien abre la página después) */
   events?: SystemEvent[]
   alerts?: ActiveAlert[]
@@ -187,15 +193,15 @@ export type TelemetryMessage =
   | { type: 'connection'; status: ConnectionStatus }
 
 /* ───────────── Sesión del canal (qué puede hacer ESTA pantalla) ─────────────
- * Identidad de SESIÓN, no de persona: no hay usuarios ni contraseñas. Toda conexión nueva es «lector» (solo ve);
- * con la clave de emparejamiento pasa a «operador» o «administrador». El servidor lo decide siempre; la interfaz
- * solo lo refleja (ocultar o desactivar botones es comodidad, no un control). */
+ * Toda conexión nueva es ANÓNIMA («lector» sin usuario: ve un estado reducido). Con la clave de un usuario (CASA_USERS) o
+ * una compartida pasa a su rol y queda identificada por un alias (lo que guarda la auditoría). El servidor lo decide
+ * siempre; la interfaz solo lo refleja (ocultar o desactivar botones es comodidad, no un control). */
 export type SessionRole = 'lector' | 'operador' | 'administrador'
 
 /** Mensajes del servidor dirigidos SOLO a esta conexión (no son datos de la casa). */
 export type SessionMessage =
   /** Rol vigente. `revoked`: un administrador revocó las sesiones de control. */
-  | { type: 'session'; role: SessionRole; revoked?: boolean; note?: string }
+  | { type: 'session'; role: SessionRole; user?: string | null; revoked?: boolean; note?: string }
   /** Acción sensible: el servidor espera que se devuelva `code` (un solo uso, `ttlMs` de vigencia) para ejecutarla. */
   | { type: 'confirm'; code: string; kind: string; summary: string; ttlMs: number }
   /** El servidor rechazó una orden. `reason` es un motivo corto (forbidden, range, schema, bad_key…). */

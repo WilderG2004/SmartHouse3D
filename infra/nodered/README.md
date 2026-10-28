@@ -16,8 +16,8 @@ Es un dibujo de cajitas (llamadas **nodos**) unidas por cables. Cada cajita hace
 | `flows.local.json` | **El flujo listo para tu Node-RED** (apunta a tu InfluxDB Cloud, sin llave). Lo instalan `setup-local.mjs` y `redeploy-flow.mjs`. | No (se genera solo) |
 | `flows.json` | **El mismo flujo, para Docker.** | No (se genera solo) |
 | `flows_cred.json` | Solo **referencias** `${INFLUX_TOKEN_WRITE}` y `${INFLUX_TOKEN_READ}`: los tokens reales viven en `infra/.env`. | No (se genera solo) |
-| `settings.js` | Ajustes **endurecidos** de Node-RED: editor con usuario y contrasena (apagado si no hay hash), `credentialSecret` desde el entorno, solo escucha en `127.0.0.1`, control del WebSocket. Ningun secreto va aqui. | Casi nunca |
-| `seguridad-ws.js` | **El control del apreton de manos del WebSocket**: `Origin` permitido, conexiones simultaneas e intentos por minuto por IP. | Casi nunca |
+| `settings.js` | Ajustes **endurecidos** de Node-RED: editor con usuario y contrasena (apagado si no hay hash), `credentialSecret` desde el entorno, solo escucha en `127.0.0.1`, control del WebSocket, **CORS** de `/api` (`httpNodeCors`: solo los origenes de `CASA_ALLOWED_ORIGINS`, y deja enviar `Authorization` al historial) y el almacen de contexto `persistente` en disco (anti-repeticion de `/api/ingest`). Ningun secreto va aqui. | Casi nunca |
+| `seguridad-ws.js` | **El control del apreton de manos del WebSocket**: `Origin` permitido, conexiones simultaneas e intentos por minuto por IP. Tambien da la lista de origenes permitidos al CORS de `settings.js`. | Casi nunca |
 | `package.json` | Marca esta carpeta como CommonJS (Node-RED carga `settings.js` con `require`). | No |
 | `Dockerfile` | La "receta" para armar Node-RED con el nodo de InfluxDB ya instalado. | Casi nunca |
 

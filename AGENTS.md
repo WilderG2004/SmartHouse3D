@@ -26,14 +26,16 @@ Cada carpeta tiene su propio `README.md` que explica cada archivo (empieza por `
 ## Reglas
 
 - **Seguridad IoT (leer `docs/seguridad-iot.md` antes de tocar el canal):**
-  - **Nunca** imprimas, registres ni guardes en el repositorio claves, tokens ni hashes: `CASA_PAIRING_KEY`, `CASA_ADMIN_KEY`, `CASA_DEVICE_KEY`, `INFLUX_*`, `NODERED_*`. Viven en `infra/.env` (ignorado por Git). En documentos y ejemplos usa `[REDACTADO]`. No subas `infra/.env` ni lo copies al zip.
+  - **Nunca** imprimas, registres ni guardes en el repositorio claves, tokens ni hashes: `CASA_USERS`, `CASA_PAIRING_KEY`, `CASA_ADMIN_KEY`, `CASA_DEVICE_KEY`, `INFLUX_*`, `NODERED_*`. Viven en `infra/.env` (ignorado por Git). En documentos y ejemplos usa `[REDACTADO]`. No subas `infra/.env` ni lo copies al zip.
   - **Nada de claves en variables `VITE_...`**: quedan visibles en el codigo que descarga el navegador.
+  - **Privacidad:** una pantalla sin emparejar no recibe alarma, movimiento, puertas, eventos, alertas, luces ni consumo (medidor, enchufes, aires), y el clima le llega sin luminosidad (`privacy` en `security-policy.mts`, filtro en `97-serializar.js`) y `/api/history/*` exige `Authorization: Bearer <clave>`. Un tipo de mensaje nuevo que delate si hay alguien en casa va en `privacy.hiddenTypes`.
+  - **Identidad:** las claves personales viven en `CASA_USERS` (`alias:rol:clave`); la auditoria guarda el alias. No imprimas `CASA_USERS`.
   - **La validacion vive en Node-RED**, nunca solo en la interfaz: `infra/nodered/src/06-sesion-autorizar.js` (ordenes), `87-validar-telemetria.js` (telemetria). La interfaz solo copia la tabla de permisos (`src/config/security.config.ts`) para desactivar botones; si cambias un permiso, cambialo en `infra/nodered/tools/security-policy.mts` **y** en esa copia.
   - **Todo comando nuevo** necesita una entrada en `kinds` de `security-policy.mts` (rol minimo y claves permitidas) y su validacion de id y rango en `06-sesion-autorizar.js`; un tipo que no este en la tabla se rechaza. Si es sensible (desarmar, abrir el perimetro), pide confirmacion con codigo.
   - **No agregues otro canal de control** (MQTT directo, REST sin firma, etc.) que se salte el WebSocket autorizado: se elimino el adaptador MQTT por eso.
   - **Todo punto que llega a InfluxDB** pasa por `86-firmar-telemetria.js` y `87-validar-telemetria.js`; si agregas una medicion, agregala al `schema` de la politica con sus rangos.
   - **Imagenes de Docker con version fija**, nunca `latest`. Puertos solo en `127.0.0.1` (o el proxy de `infra/despliegue/`).
-  - Despues de cambiar la seguridad, ejecuta `npm run seguridad:probar` (50 pruebas de rechazo contra un Node-RED propio; las B solo corren con `CASA_INGEST=on` y A15 solo con `--incluir-revocar`) y deja pasar todas.
+  - Despues de cambiar la seguridad, ejecuta `npm run seguridad:probar` (65 pruebas de rechazo contra un Node-RED propio; lee las claves de `infra/.env`; las B solo corren con `CASA_INGEST=on` y A15 solo con `--incluir-revocar`) y deja pasar todas.
   - Node-RED se enciende **siempre** con `npm run nodered:iniciar`, nunca con `node-red` a secas (ese usa `~/.node-red`, escucha en `0.0.0.0` y deja el editor sin contrasena).
 - **Nunca** imprimas, registres ni guardes en archivos los tokens de InfluxDB. No los metas en commits.
   Si alguien te pega un token en el chat, no lo uses ni lo repitas: avisale que debe revocarlo y crear otro.
@@ -53,6 +55,9 @@ Cada carpeta tiene su propio `README.md` que explica cada archivo (empieza por `
 | Regenerar el flujo de Node-RED | `npm run nodered:build` |
 | Crear (o rotar) secretos en `infra/.env` | `npm run seguridad:secretos` · `-- --rotar CASA_PAIRING_KEY` |
 | Crear los tokens de InfluxDB (uno escribe, otro lee) | `npm run seguridad:tokens` |
+| Retencion de InfluxDB (30 dias datos, 90 huellas) | `npm run seguridad:retencion` (token de administrador solo en la terminal) |
+| Clave personal para una persona | `npm run seguridad:secretos -- --usuario alias:rol` |
+| Borrar de `infra/.env` el token de administrador de InfluxDB | `npm run seguridad:secretos -- --olvidar-admin` |
 | Encender Node-RED local con settings endurecidos | `npm run nodered:iniciar` |
 | Pruebas de rechazo de seguridad (solo contra Node-RED propio) | `npm run seguridad:probar` |
 | Verificar la integridad del historial | `npm run seguridad:integridad` |

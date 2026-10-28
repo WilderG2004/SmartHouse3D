@@ -36,9 +36,14 @@ const ORIGENES_LOCALES = [
 const entero = (v, def) => { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : def }
 const activo = (v) => /^(on|true|1|si|sí)$/i.test(String(v || '').trim())
 
-function crearVerificador(env = process.env, log = console.warn, ahora = Date.now) {
+/** Orígenes de CASA_ALLOWED_ORIGINS (o los de desarrollo local si no hay lista). Lo usan el WebSocket y el CORS de la API. */
+function origenesPermitidos(env = process.env) {
   const lista = String(env.CASA_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean)
-  const permitidos = new Set(lista.length ? lista : ORIGENES_LOCALES)
+  return new Set(lista.length ? lista : ORIGENES_LOCALES)
+}
+
+function crearVerificador(env = process.env, log = console.warn, ahora = Date.now) {
+  const permitidos = origenesPermitidos(env)
   const exigirOrigin = activo(env.CASA_WS_REQUIRE_ORIGIN)
   const maxPorIp = entero(env.CASA_WS_MAX_PER_IP, 10)
   const maxPorMin = entero(env.CASA_WS_HANDSHAKES_PER_MIN, 30)
@@ -104,4 +109,4 @@ function crearVerificador(env = process.env, log = console.warn, ahora = Date.no
   return verificar
 }
 
-module.exports = { crearVerificador, ORIGENES_LOCALES }
+module.exports = { crearVerificador, origenesPermitidos, ORIGENES_LOCALES }

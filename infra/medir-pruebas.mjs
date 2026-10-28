@@ -91,7 +91,8 @@ async function medirGet(ruta, veces = 15) {
   let ultimo = null
   for (let i = 0; i < veces; i++) {
     const a = now()
-    try { const r = await fetch(BASE + ruta); ultimo = r.status; await r.text() } catch { ultimo = 'sin respuesta' }
+    // el historial exige la clave de un usuario (Authorization: Bearer); /api/health la ignora
+    try { const r = await fetch(BASE + ruta, { headers: { Authorization: `Bearer ${CLAVE}` } }); ultimo = r.status; await r.text() } catch { ultimo = 'sin respuesta' }
     t.push(now() - a)
     await sleep(100)
   }

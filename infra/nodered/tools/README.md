@@ -5,7 +5,7 @@
 ## `security-policy.mts`
 
 Genera **una sola vez** la politica de seguridad que usan los nodos: roles (`lector`, `operador`, `administrador`), el rol minimo y las claves permitidas de cada tipo de mensaje, las acciones que piden confirmacion, los limites
-(tamano, frecuencia, intentos de clave) y el esquema y rango de cada medicion. Los ids salen de `house.config.ts`. **No contiene secretos** (las claves viven en `infra/.env`).
+(tamano, frecuencia, intentos de clave), la **privacidad** (`privacy`: que mensajes y partes del estado no ve una pantalla sin emparejar) y el esquema y rango de cada medicion. Los ids salen de `house.config.ts`. **No contiene secretos** (las claves viven en `infra/.env`).
 
 ## `build-flows.mts`
 

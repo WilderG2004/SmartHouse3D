@@ -26,16 +26,19 @@ const ROTAR = argv.includes('--rotar')
 const { valores: v } = leer(archivo)
 
 const URL_BASE = String(opt('--influx-url', process.env.INFLUX_URL || 'http://localhost:8086')).replace(/\/+$/, '')
-const ADMIN = v.INFLUX_ADMIN_TOKEN || ''
+// El token de administrador puede venir de la terminal ($env:INFLUX_ADMIN_TOKEN) en vez del archivo: es lo recomendable
+const ADMIN = process.env.INFLUX_ADMIN_TOKEN || v.INFLUX_ADMIN_TOKEN || ''
+const ADMIN_EN_ARCHIVO = !process.env.INFLUX_ADMIN_TOKEN && !!v.INFLUX_ADMIN_TOKEN
 const ORG = v.INFLUX_ORG || 'casa'
 const BUCKET = v.INFLUX_BUCKET || 'casa_iot'
 const BUCKET_INT = v.INFLUX_INTEGRITY_BUCKET || BUCKET + '_integridad'
 const RETENCION_DIAS = Number(v.INFLUX_RETENTION_DAYS || 30)
+const RETENCION_HUELLAS = Number(v.INFLUX_INTEGRITY_RETENTION_DAYS || (RETENCION_DIAS > 0 ? RETENCION_DIAS * 3 : 0))
 const DESC_W = `Node-RED escritura · ${BUCKET}`
 const DESC_R = `Node-RED lectura · ${BUCKET}`
 
 const die = (m, h) => { console.error('\n  ✘ ' + m); for (const l of [].concat(h || [])) console.error('    ' + l); process.exit(1) }
-if (!ADMIN) die(`No encuentro INFLUX_ADMIN_TOKEN en ${archivo}.`, 'Genera los secretos primero:  npm run seguridad:secretos')
+if (!ADMIN) die(`No encuentro INFLUX_ADMIN_TOKEN (ni en la terminal ni en ${archivo}).`, ['Ponlo solo en esta terminal:  $env:INFLUX_ADMIN_TOKEN = "<token>"', 'o, si aún no existe, genéralo:  npm run seguridad:secretos'])
 
 async function api(ruta, { method = 'GET', body } = {}) {
   try {
@@ -55,7 +58,17 @@ if (!org) die(`No existe la organización «${ORG}» en InfluxDB.`, `Existentes:
 
 async function asegurarBucket(nombre, dias) {
   const r = await api(`/api/v2/buckets?name=${encodeURIComponent(nombre)}&orgID=${org.id}`)
-  if (r.ok && r.json?.buckets?.length) { console.log(`  ✔ bucket «${nombre}» ya existe`); return r.json.buckets[0].id }
+  if (r.ok && r.json?.buckets?.length) {
+    const b = r.json.buckets[0]
+    // Ya existe: se ajusta su retención si no es la pedida
+    const actual = b.retentionRules?.find((x) => x.type === 'expire')?.everySeconds ?? 0
+    const nuevo = dias > 0 ? dias * 86400 : 0
+    if (actual !== nuevo) {
+      const p = await api(`/api/v2/buckets/${b.id}`, { method: 'PATCH', body: { retentionRules: nuevo ? [{ type: 'expire', everySeconds: nuevo }] : [] } })
+      console.log(p.ok ? `  ✔ bucket «${nombre}» ya existe: retención ajustada a ${dias > 0 ? dias + ' días' : 'sin límite'}` : `  ⚠ bucket «${nombre}»: no se pudo ajustar la retención (HTTP ${p.status})`)
+    } else console.log(`  ✔ bucket «${nombre}» ya existe (retención ${dias > 0 ? dias + ' días' : 'sin límite'})`)
+    return b.id
+  }
   const c = await api('/api/v2/buckets', { method: 'POST', body: { orgID: org.id, name: nombre, retentionRules: dias > 0 ? [{ type: 'expire', everySeconds: dias * 86400 }] : [] } })
   if (!c.ok) die(`No se pudo crear el bucket «${nombre}» (HTTP ${c.status}).`, c.text.slice(0, 200))
   console.log(`  ✔ bucket «${nombre}» creado (retención ${dias > 0 ? dias + ' días' : 'sin límite'})`)
@@ -63,7 +76,7 @@ async function asegurarBucket(nombre, dias) {
 }
 const idDatos = await asegurarBucket(BUCKET, RETENCION_DIAS)
 // las huellas viven más que los datos: se puede comprobar qué pasó aunque los datos viejos ya hayan expirado
-const idHuellas = await asegurarBucket(BUCKET_INT, RETENCION_DIAS > 0 ? RETENCION_DIAS * 3 : 0)
+const idHuellas = await asegurarBucket(BUCKET_INT, RETENCION_HUELLAS)
 
 const existentes = (await api(`/api/v2/authorizations?orgID=${org.id}`)).json?.authorizations || []
 async function crear(desc, accion) {
@@ -87,4 +100,8 @@ else console.log('  · INFLUX_TOKEN_READ ya está en el .env (usa --rotar para c
 if (Object.keys(cambios).length) {
   escribir(archivo, cambios)
   console.log(`\n  Guardados en ${archivo}. Reinicia lo que los usa:\n    docker compose -f infra/docker-compose.yml up -d --force-recreate nodered grafana`)
+}
+if (ADMIN_EN_ARCHIVO) {
+  console.log('\n  ⚠ INFLUX_ADMIN_TOKEN sigue guardado en el archivo y da acceso TOTAL a InfluxDB. Ya no hace falta para funcionar:')
+  console.log('    npm run seguridad:secretos -- --olvidar-admin')
 }

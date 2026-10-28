@@ -124,6 +124,33 @@ function apiHeaders(req) {
 }
 // ─────────────────────────────────────────────────────────────────────
 `,
+  auth: `// ── Quién consulta la API (generado; necesita @uses crypto antes) ─────
+// GET /api/history/* exige «Authorization: Bearer <clave>»: la de un usuario de CASA_USERS (cualquier rol) o una compartida.
+// Los fallos cuentan en el mismo tope global que los emparejamientos por WebSocket (helloGlobalMax por minuto).
+function apiUser(req) {
+  if (!SEC || !RT || !RT.users) return { user: null, why: 'not_ready' };
+  const t = Date.now();
+  RT.helloFails = RT.helloFails.filter((x) => t - x < SEC.limits.helloGlobalWindowMs);
+  if (RT.helloFails.length >= SEC.limits.helloGlobalMax) return { user: null, why: 'locked' };
+  const m = /^Bearer ([\\x21-\\x7e]{8,128})$/.exec(String((req && req.headers && req.headers.authorization) || ''));
+  if (!m) return { user: null, why: 'no_key' };
+  const h = sha256Hex(m[1]);
+  let found = null;
+  for (const u of RT.users) { const ok = ctEq(u.hash, h); if (ok && !found) found = u; }   // recorre todos: no filtra por tiempo
+  if (!found) { RT.helloFails.push(t); return { user: null, why: 'bad_key' }; }
+  return { user: found, why: null };
+}
+/** Si la petición no trae una clave válida, deja msg listo como 401/429 y devuelve true. */
+function denyApi(msg) {
+  const a = apiUser(msg.req);
+  if (a.user) return false;
+  msg.statusCode = a.why === 'locked' ? 429 : 401;
+  msg.payload = { error: a.why === 'locked' ? 'Demasiados intentos con claves inválidas; espera un minuto' : 'Hace falta una clave válida: Authorization: Bearer <clave>' };
+  msg.headers = Object.assign(apiHeaders(msg.req), a.why === 'locked' ? { 'Retry-After': '60' } : { 'WWW-Authenticate': 'Bearer realm="casa-iot"' });
+  return true;
+}
+// ─────────────────────────────────────────────────────────────────────
+`,
   range: `// ── Rango de consulta (generado) ─────────────────────────────────────
 function parseRange(q) {
   const t = Date.now();
@@ -290,7 +317,7 @@ connect(id('persistir'), 1, linkTelOut) // contadores del pipeline hacia la inte
 
 /* E · API REST para el historial */
 const Y5 = Y4 + 230
-comment('E · API REST — historial desde InfluxDB (Flux) para las gráficas del frontend', 520, Y5 - 40, 'GET /api/history/power · /smoke · /climate?room=… (from, to en ms; bucket en s) y GET /api/health')
+comment('E · API REST — historial desde InfluxDB (Flux) para las gráficas del frontend', 520, Y5 - 40, 'GET /api/history/power · /smoke · /climate?room=… (from, to en ms; bucket en s; exigen Authorization: Bearer <clave de usuario>) y GET /api/health (pública)')
 const q = add({ id: id('influx_in'), type: 'influxdb in', name: 'Consultar InfluxDB (Flux)', influxdb: 'cfg_influx_read', query: '', rawOutput: false, precision: '', retentionPolicy: '', org: INFLUX.org, x: 860, y: Y5 + 50 })
 fn('hist-formato', 1160, Y5 + 50)
 const resp = add({ id: id('http_resp'), type: 'http response', name: 'Respuesta JSON', statusCode: '', headers: {}, x: 1420, y: Y5 + 50 }, 0)
@@ -305,7 +332,7 @@ connect(q, 0, id('hist-formato')); connect(id('hist-formato'), 0, resp); connect
   connect(h, 0, id(key as string))
   connect(id(key as string), 0, q)
 })
-connect(id('hist-clima'), 1, resp) // room inválido → 400
+for (const k of ['hist-power', 'hist-smoke', 'hist-clima']) connect(id(k), 1, resp) // sin clave → 401 · room inválido → 400
 // Ingesta de un dispositivo externo firmado (desactivada por defecto; ver CASA_INGEST en .env.example)
 const hIng = add({ id: id('http_ingest'), type: 'http in', name: 'POST /api/ingest', url: '/api/ingest', method: 'post', upload: false, swaggerDoc: '', x: 160, y: Y5 + 300 })
 fn('ingesta-recibir', 480, Y5 + 300)

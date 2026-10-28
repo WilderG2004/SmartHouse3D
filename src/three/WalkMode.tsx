@@ -85,22 +85,19 @@ export function WalkMode({ scene, rigs, markers }: { scene: THREE.Object3D; rigs
   )
   const leaves = useMemo(
     () =>
-      [...rigs.values()]
-        .map((rig) => {
-          const mesh = rig.pivot.children.find((c) => c.userData.doorId === rig.def.id) as THREE.Mesh | undefined
-          if (!mesh) return null
-          if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
-          const bb = mesh.geometry.boundingBox!
-          // Las 4 esquinas de abajo de la hoja (en su propio sistema); con el pivote se mueven al abrir
-          const corners = [
-            new THREE.Vector3(bb.min.x, bb.min.y, bb.min.z),
-            new THREE.Vector3(bb.max.x, bb.min.y, bb.min.z),
-            new THREE.Vector3(bb.max.x, bb.min.y, bb.max.z),
-            new THREE.Vector3(bb.min.x, bb.min.y, bb.max.z),
-          ]
-          return { rig, mesh, corners }
-        })
-        .filter((l): l is NonNullable<typeof l> => !!l),
+      [...rigs.values()].map((rig) => {
+        const mesh = rig.leaf
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
+        const bb = mesh.geometry.boundingBox!
+        // Las 4 esquinas de abajo de la hoja (en su propio sistema); con el pivote se mueven al abrir
+        const corners = [
+          new THREE.Vector3(bb.min.x, bb.min.y, bb.min.z),
+          new THREE.Vector3(bb.max.x, bb.min.y, bb.min.z),
+          new THREE.Vector3(bb.max.x, bb.min.y, bb.max.z),
+          new THREE.Vector3(bb.min.x, bb.min.y, bb.max.z),
+        ]
+        return { rig, mesh, corners }
+      }),
     [rigs],
   )
   const leafMeshes = useMemo(() => leaves.map((l) => l.mesh), [leaves])

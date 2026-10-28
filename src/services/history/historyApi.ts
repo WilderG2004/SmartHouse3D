@@ -3,6 +3,9 @@
  * expondría el token de la base de datos y habría que resolver CORS).
  *
  *   ► Base de la API:  VITE_API_URL  (por defecto http://localhost:1880/api)
+ *   ► Autorización: /history/* exige «Authorization: Bearer <clave>», la misma con la que se emparejó esta pestaña
+ *     (sessionStorage, ver services/telemetry/pairingKey.ts). Sin clave el historial no se pide: una pantalla anónima
+ *     no puede descargar 31 días de consumo (delatan cuándo hay alguien en casa).
  *
  * Endpoints (implementados en el flujo de Node-RED, sección «E · API REST»; Flux sobre InfluxDB):
  *   GET {API}/history/power?from=<ms>&to=<ms>&bucket=<seg>
@@ -22,6 +25,7 @@
  *   light / door / pir / security / events  (cambios de estado y log)
  */
 import type { ClimatePoint, PowerPoint, TimePoint } from '../../types/iot'
+import { pairingKey } from '../telemetry/pairingKey'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:1880/api'
 
@@ -35,10 +39,19 @@ export const RANGE_MINUTES: Record<Exclude<HistoryRange, 'live'>, number> = { '1
 /** ≈300 puntos por gráfica, cualquiera sea el rango. */
 const bucketFor = (minutes: number) => Math.max(1, Math.ceil((minutes * 60) / 300))
 
+/** El historial necesita una pantalla emparejada (o la clave ya no vale). */
+export class HistoryAuthError extends Error {}
+
 async function getJson<T>(path: string, minutes: number, extra = ''): Promise<T> {
   const to = Date.now()
   const from = to - minutes * 60_000
-  const res = await fetch(`${API_URL}/history/${path}?from=${from}&to=${to}&bucket=${bucketFor(minutes)}${extra}`)
+  const key = pairingKey.get()
+  if (!key) throw new HistoryAuthError('Empareja esta pantalla con tu clave para ver el historial.')
+  const res = await fetch(`${API_URL}/history/${path}?from=${from}&to=${to}&bucket=${bucketFor(minutes)}${extra}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  })
+  if (res.status === 401) throw new HistoryAuthError('La clave de esta pantalla ya no vale para el historial: vuelve a emparejar.')
+  if (res.status === 429) throw new HistoryAuthError('Demasiados intentos con claves inválidas: espera un minuto.')
   if (!res.ok) throw new Error(`Historial ${path}: HTTP ${res.status}`)
   return (await res.json()) as T
 }
@@ -63,9 +76,9 @@ export const fetchSmokeRange = (minutes: number) => getJson<TimePoint[]>('smoke'
 export const fetchClimateRange = (room: string, minutes: number) =>
   getJson<ClimatePoint[]>('climate', minutes, `&room=${encodeURIComponent(room)}`)
 
-/** Precarga las gráficas «en vivo» con los últimos minutos guardados. Devuelve vacío en modo simulado. */
+/** Precarga las gráficas «en vivo» con los últimos minutos guardados. Devuelve vacío en modo simulado o sin emparejar. */
 export async function fetchHistorySeed(minutes = 5) {
-  if (!HISTORY_ENABLED) return { power: [] as PowerPoint[], smoke: [] as TimePoint[] }
+  if (!HISTORY_ENABLED || !pairingKey.get()) return { power: [] as PowerPoint[], smoke: [] as TimePoint[] }
   const [power, smoke] = await Promise.all([fetchPowerRange(minutes), fetchSmokeRange(minutes)])
   return { power, smoke }
 }

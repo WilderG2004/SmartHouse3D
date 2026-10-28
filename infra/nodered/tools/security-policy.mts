@@ -8,6 +8,7 @@
  *   - cuáles órdenes piden confirmación en dos pasos
  *   - límites (tamaño, frecuencia, intentos de emparejamiento)
  *   - dispositivos simulados que existen y el esquema/rango de cada medición
+ *   - privacidad: qué datos NO ve una pantalla sin emparejar (delatan si hay alguien en casa)
  *
  * Los ids de dispositivos, habitaciones y escenas salen de src/config/house.config.ts (misma fuente que usa la interfaz).
  * Nada de esto es un secreto: las CLAVES nunca están aquí (viven en variables de entorno, ver .env.example).
@@ -46,7 +47,7 @@ export function buildSecurityPolicy(cfg: any) {
   /** Mensajes que puede enviar un cliente por el WebSocket. role = rango mínimo; keys = ÚNICAS claves aceptadas. */
   const kinds: Record<string, { role: number; keys: string[]; note: string }> = {
     'snapshot.request': { role: 0, keys: ['kind'], note: 'Pide el estado completo (lo usa la interfaz al conectar)' },
-    'session.hello': { role: 0, keys: ['kind', 'key'], note: 'Empareja la sesión con una clave (Operador o Administrador)' },
+    'session.hello': { role: 0, keys: ['kind', 'key'], note: 'Empareja la sesión con una clave de usuario (CASA_USERS) o compartida (Operador / Administrador)' },
     'session.logout': { role: 0, keys: ['kind'], note: 'Vuelve a solo lectura' },
     confirm: { role: 0, keys: ['kind', 'code'], note: 'Segundo paso de una acción sensible (código de un solo uso)' },
     'light.set': { role: 1, keys: ['kind', 'id', 'patch'], note: 'Luces: encender, intensidad y color' },
@@ -108,10 +109,25 @@ export function buildSecurityPolicy(cfg: any) {
       setpoint: [sp.acSetpointMin, sp.acSetpointMax],
       hour: [0, 23.99],
     },
+    /**
+     * PRIVACIDAD. Todo lo que dice si hay alguien en casa: el modo de la alarma, el movimiento, las puertas, los eventos,
+     * las alertas, las LUCES encendidas y el CONSUMO (medidor general, enchufes y aires: un televisor o un aire prendido
+     * delata a la persona). Solo lo reciben las sesiones emparejadas con una clave (cualquier rol, también un «lector» con
+     * clave propia). Una conexión anónima recibe un snapshot reducido (sin hiddenState, con restricted: true), nunca los
+     * mensajes hiddenTypes y el clima SIN los campos hiddenClimateFields: la luminosidad (lux) sube unos 180 lx por
+     * bombillo, así que dejarla revelaría las luces por otro lado. Lo aplica «Filtrar por sesión y serializar» (97-serializar.js).
+     */
+    privacy: {
+      hiddenTypes: ['pir', 'door', 'security', 'event', 'alert', 'light', 'power', 'plug', 'ac'],
+      hiddenState: ['pir', 'doors', 'security', 'events', 'alerts', 'lights', 'power', 'plugs', 'acs'],
+      hiddenClimateFields: ['lux'],
+    },
     limits: {
       maxMsgBytes: 2048, // un comando legítimo pesa < 300 bytes
       readBucket: { cap: 10, refillPerSec: 2 }, // sesión de solo lectura: casi nunca manda nada
       controlBucket: { cap: 120, refillPerSec: 60 }, // control: aguanta un deslizador arrastrado, no una inundación
+      sessionIdleMs: 3_600_000, // una sesión anónima sin mensajes en 1 h se olvida
+      authedIdleMs: 24 * 3_600_000, // una emparejada, en 24 h (al desconectarse se olvida en el acto)
       helloFailMax: 5, // intentos de clave fallidos por sesión antes de bloquearla
       helloLockMs: 60_000,
       helloGlobalMax: 30, // intentos fallidos entre TODAS las sesiones por ventana

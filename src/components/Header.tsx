@@ -1,4 +1,4 @@
-import { Home, Thermometer, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react'
+import { BarChart3, Home, Thermometer, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react'
 import { fmtHour, tempInk } from '../lib/climate'
 import { fmtNumber } from '../lib/format'
 import { telemetry } from '../services/telemetry'
@@ -14,35 +14,49 @@ const STATUS: Record<ConnectionStatus, { text: string; dot: string }> = {
   disconnected: { text: 'Desconectado', dot: 'bg-bad' },
 }
 
-const chip = 'flex items-center gap-2 rounded-full border bg-panel px-3.5 py-2 text-sm shadow-card'
+const chip = 'flex items-center gap-2 rounded-full border bg-white/[0.04] px-3 py-1.5 text-sm'
 
 export function Header() {
   const status = useHouseStore((s) => s.connection)
   const world = useHouseStore((s) => s.world)
   const soundOn = useUiStore((s) => s.soundOn)
   const toggleSound = useUiStore((s) => s.toggleSound)
+  const analyticsOpen = useUiStore((s) => s.analyticsOpen)
+  const setAnalyticsOpen = useUiStore((s) => s.setAnalyticsOpen)
   const s = STATUS[status]
   const online = status === 'connected'
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+    <header className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-2.5">
       <div className="flex items-center gap-3.5">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-card">
-          <Home size={22} />
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-slate-950 shadow-[0_0_24px_rgb(16_185_129/0.45)]">
+          <Home size={20} />
         </span>
         <div>
-          <h1 className="text-xl font-bold tracking-tight">
+          <h1 className="text-lg font-bold tracking-tight">
             Casa IoT <span className="font-medium text-mute">· Gemelo digital</span>
           </h1>
-          <p className="text-sm text-mute">Iluminación, clima, energía y seguridad en una sola vista</p>
+          <p className="hidden text-xs text-mute 2xl:block">Iluminación, clima, energía y seguridad en una sola vista</p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setAnalyticsOpen(!analyticsOpen)}
+          aria-pressed={analyticsOpen}
+          title="Gráficas, registro de eventos y estado del pipeline de datos"
+          className={`${chip} hidden font-semibold transition-colors lg:flex ${
+            analyticsOpen ? 'border-cool bg-cool-soft text-cool-strong' : 'border-line text-fg hover:border-cool'
+          }`}
+        >
+          <BarChart3 size={16} />
+          Analítica
+        </button>
         <div className={`${chip} border-line`}>
           <Thermometer size={16} style={{ color: tempInk(world.outdoorTemp) }} />
           <span className="font-semibold">{fmtNumber(world.outdoorTemp, 1)}° exterior</span>
-          <span className="text-mute">· {fmtHour(world.hour)}</span>
+          <span className="hidden text-mute xl:inline">· {fmtHour(world.hour)}</span>
         </div>
 
         <button
@@ -55,7 +69,7 @@ export function Header() {
           }`}
         >
           {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          Sonido {soundOn ? 'activado' : 'apagado'}
+          <span className="hidden 2xl:inline">Sonido {soundOn ? 'activado' : 'apagado'}</span>
         </button>
 
         <SessionChip />
@@ -63,7 +77,7 @@ export function Header() {
 
         <div className={`${chip} ${telemetry.mode === 'simulated' ? 'border-warm bg-warm-soft' : 'border-line'}`}>
           {online ? <Wifi size={16} className="text-ok-strong" /> : <WifiOff size={16} className="text-bad-strong" />}
-          <span className="font-semibold">{telemetry.label}</span>
+          <span className="hidden font-semibold 2xl:inline">{telemetry.label}</span>
           <span className={`h-2.5 w-2.5 rounded-full ${s.dot}`} />
           <span className="text-mute">{s.text}</span>
         </div>
