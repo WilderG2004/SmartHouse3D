@@ -25,10 +25,10 @@ acondicionados, **montados en un muro real** de su habitacion.
 | `AcLayer.tsx` | **Los 6 aires acondicionados**: el aparato montado en un muro real de su habitacion (con `wallMount.ts`, una sola vez al cargar el modelo), una rendija que cambia de color y particulas de aire frio cuando el compresor trabaja. Clic = encender o apagar. |
 | `PlugLayer.tsx` | **Los 6 enchufes**: un disco que late cuando esta encendido y una etiqueta con los vatios que gasta. Clic = encender o apagar. |
 | `NearHtml.tsx` | **Etiqueta flotante que se oculta de lejos.** Las etiquetas de sensores, clima, aires y enchufes la usan: al caminar por la casa solo ves las que estan cerca (a unos 4,5 m), asi la pantalla no se llena. Fuera del recorrido se ven todas, como siempre. |
-| `WalkMode.tsx` | **El recorrido en primera persona.** Pone la camara a la altura de los ojos y la mueve con el teclado y el mouse; frena en paredes, muebles y puertas cerradas; detecta la habitacion y la puerta que tienes al frente. Ver la seccion de abajo. |
+| `WalkMode.tsx` | **El recorrido en primera persona.** Pone la camara a la altura de los ojos y la mueve con el teclado y el mouse (o, en pantallas tactiles, con la palanca de `WalkHud.tsx` y arrastrando un dedo); frena en paredes, muebles y puertas cerradas; detecta la habitacion y la puerta que tienes al frente. Ver la seccion de abajo. |
 | `floorplan.ts` | **Saca el plano de la casa del propio modelo.** "Corta" la casa con un plano horizontal (como cortar una torta) y guarda las lineas donde toca paredes y muebles. Sirve para chocar al caminar y para dibujar el mini-mapa. No hay que tocar Blender. |
 | `collider.ts` | **Los choques.** La persona es un circulo visto desde arriba; si toca una pared se empuja hacia afuera (por eso "resbalas" a lo largo de ella). Tambien calcula a que lugares se puede llegar caminando y cual es el punto mas despejado de una habitacion, para que "Ir a la cocina" te deje en un lugar libre y mirando hacia donde hay espacio, nunca pegado a un mueble. |
-| `walkState.ts` | **Una pizarra compartida** con donde esta la persona, hacia donde mira y donde estan las puertas. La escena la escribe y el mini-mapa la lee (cambia muchas veces por segundo, por eso no va en la memoria de la pantalla). |
+| `walkState.ts` | **Una pizarra compartida** con donde esta la persona, hacia donde mira y donde estan las puertas (la escena la escribe y el mini-mapa la lee), y la palanca tactil (al reves: la escribe la pantalla y la escena la lee) (cambia muchas veces por segundo, por eso no va en la memoria de la pantalla). |
 
 ## Recorrer la casa en primera persona
 
@@ -42,6 +42,9 @@ Se activa con el boton **Recorrer la casa** del visor. La camara entra por la pu
 | **Shift** | Correr |
 | **E** | Abrir o cerrar la puerta que tienes al frente |
 | **Esc** | Salir del recorrido (la camara vuelve a la vista de afuera) |
+| Pantalla tactil: **palanca** (abajo a la izquierda) | Caminar hacia donde empujas la perilla; empujarla poco = paso lento |
+| Pantalla tactil: **arrastrar un dedo** sobre la casa | Mirar alrededor |
+| Pantalla tactil: **tocar el aviso** de la puerta | Abrir o cerrar la puerta que tienes al frente |
 
 - El cursor queda libre a proposito: asi puedes **encender luces o abrir puertas desde el panel de la derecha mientras caminas**.
 - Las puertas empiezan cerradas y frenan el paso; abiertas se puede pasar. El porton del garaje deja pasar cuando esta levantado.

@@ -1,7 +1,7 @@
 /**
- * Datos del recorrido que cambian muchas veces por segundo (posicion, mirada, puertas).
+ * Datos del recorrido que cambian muchas veces por segundo (posicion, mirada, puertas, palanca tactil).
  * No van en el store de React porque cambiarian la pantalla 60 veces por segundo: el mini-mapa los lee a su ritmo.
- * Los escribe `three/WalkMode.tsx` y los lee `components/WalkHud.tsx`.
+ * La posicion y las puertas las escribe `three/WalkMode.tsx` y las lee `components/WalkHud.tsx`; la palanca, al reves.
  */
 import type { FloorPlan } from './floorplan'
 
@@ -22,4 +22,6 @@ export const walkState = {
   lights: [] as { id: string; x: number; z: number }[],
   /** Las hojas de las puertas con la posicion que tienen ahora */
   doors: [] as WalkDoorShape[],
+  /** Palanca tactil (celular / tablet): x = derecha, y = abajo (hacia atras), de -1 a 1. La escribe WalkHud. */
+  joy: { x: 0, y: 0 },
 }

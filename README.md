@@ -223,10 +223,14 @@ En el visor 3D, el boton **Recorrer la casa** mete la camara a la casa, a la alt
 | **E** | Abrir o cerrar la puerta que miras |
 | **Esc** | Salir |
 
+**En el celular o la tablet** (sin teclado) aparece una **palanca** abajo a la izquierda: arrastra la perilla hacia donde quieres ir (si la
+empujas poco, caminas despacio). Para **mirar**, arrastra un dedo sobre la casa. Cuando tengas una puerta al frente, **toca su aviso** para
+abrirla o cerrarla. Para salir, el boton naranja de la barra de camara.
+
 Mientras caminas, el **panel de la derecha sigue funcionando**: puedes encender luces, abrir puertas o prender el aire y verlo al instante. Arriba a la izquierda ves en que
 habitacion estas y su temperatura; abajo a la derecha, un mini-mapa (un clic te lleva a ese lugar). Los detalles tecnicos estan en [`src/three/README.md`](src/three/README.md).
 
-Limites: el modelo no tiene techo (se ve el cielo desde adentro), las puertas arrancan cerradas, y esta pensado para computador (teclado y mouse).
+Limites: el modelo no tiene techo (se ve el cielo desde adentro) y las puertas arrancan cerradas. En pantallas chicas no se muestran el mini-mapa ni los botones **Ir a** (taparian la casa).
 
 **Si ves tirones:** el 3D lo dibuja **tu computador** (su tarjeta grafica y su procesador), no el servidor donde este publicada la pagina. Para presentar, usa la version compilada:
 `npm run build` y despues `npm run preview` (abre http://localhost:4173). `npm run dev` es la version de desarrollo y es bastante mas lenta. Cierra otras pestanas pesadas y,

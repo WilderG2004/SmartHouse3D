@@ -2,6 +2,8 @@
  * Recorrido en primera persona: la camara entra a la casa y se mueve como una persona.
  *
  *   W A S D o flechas = caminar · arrastrar con el mouse = mirar · Shift = correr · E = abrir/cerrar la puerta que miras · Esc = salir
+ *   En pantallas tactiles: la palanca de abajo a la izquierda camina (empujarla poco = paso lento), arrastrar un dedo
+ *   sobre la casa mira y la puerta al frente se abre tocando su aviso (components/WalkHud.tsx).
  *
  * Todo sale del modelo que ya existe (sin tocar Blender):
  *   - Las paredes y los muebles frenan a la persona (ver floorplan.ts y collider.ts).
@@ -208,6 +210,7 @@ export function WalkMode({ scene, rigs, markers }: { scene: THREE.Object3D; rigs
     }
     const onBlur = () => {
       keys.current = { ...NO_KEYS }
+      walkState.joy.x = walkState.joy.y = 0
     }
 
     // Arrastrar para mirar (el cursor queda libre: asi el panel de la derecha se usa con el mouse mientras caminas)
@@ -256,6 +259,7 @@ export function WalkMode({ scene, rigs, markers }: { scene: THREE.Object3D; rigs
       el.style.touchAction = ''
       el.style.cursor = ''
       keys.current = { ...NO_KEYS }
+      walkState.joy.x = walkState.joy.y = 0
       hintId.current = null
       trans.current = null
 
@@ -327,10 +331,12 @@ export function WalkMode({ scene, rigs, markers }: { scene: THREE.Object3D; rigs
 
     if (!busy) {
       m.yaw += ((k.turnLeft ? 1 : 0) - (k.turnRight ? 1 : 0)) * TURN_SPEED * dt
-      const fwd = (k.forward ? 1 : 0) - (k.back ? 1 : 0)
-      const str = (k.right ? 1 : 0) - (k.left ? 1 : 0)
+      // Teclado y palanca tactil se suman. Las teclas siempre van a toda velocidad; la palanca, segun cuanto se empuje.
+      const joy = walkState.joy
+      const fwd = (k.forward ? 1 : 0) - (k.back ? 1 : 0) - joy.y
+      const str = (k.right ? 1 : 0) - (k.left ? 1 : 0) + joy.x
       const len = Math.hypot(fwd, str) || 1
-      const speed = k.run ? RUN_SPEED : SPEED
+      const speed = (k.run ? RUN_SPEED : SPEED) * Math.min(1, len)
       const sin = Math.sin(m.yaw)
       const cos = Math.cos(m.yaw)
       // adelante = (-sin, -cos) · derecha = (cos, -sin)
