@@ -1,6 +1,7 @@
 /**
  * Unidades de aire acondicionado: equipo 3D clicable, rendija que cambia de color,
  * partículas de aire frío cuando el compresor trabaja y etiqueta con la consigna.
+ * Cada equipo va montado contra un muro real de su habitación (wallMount.ts), mirando hacia dentro.
  */
 import { useFrame } from '@react-three/fiber'
 import { Fan, Snowflake } from 'lucide-react'
@@ -11,13 +12,30 @@ import { commands } from '../hooks/useTelemetry'
 import { useHouseStore } from '../store/useHouseStore'
 import { useUiStore } from '../store/useUiStore'
 import type { Markers } from './markers'
+import type { HouseMaterials } from './materials'
 import { NearHtml } from './NearHtml'
-import { deviceAnchor } from './roomPositions'
+import { deviceAnchor, roomCenter } from './roomPositions'
+import { mountOnWall, type WallMount } from './wallMount'
 
 const N = 26
 const DROP = 4.2
+/** Medidas del equipo (unidades del modelo): ancho, alto y fondo de la caja */
+const AC_SIZE = { width: 2.4, height: 0.8, depth: 0.8 }
 
-function AcUnit({ def, position }: { def: AcDef; position: THREE.Vector3 }) {
+/** Dónde va cada equipo: su marca en el .glb si existe; si no, contra un muro de su habitación; si no hay muro libre, junto al centro */
+function placeAc(def: AcDef, markers: Markers, house: HouseMaterials): WallMount | null {
+  if (markers.has(def.id)) return { position: markers.get(def.id)!.clone(), rotationY: 0 }
+  const center = (def.anchor && markers.get(def.anchor)?.clone()) || roomCenter(def.room, markers)
+  const walls = house.meshesByCollection.get('paredes') ?? []
+  // Ventanas, puertas y muebles altos (un armario contra el muro): el equipo no se monta delante de ellos
+  const blockers = [...house.meshesByCollection].filter(([id]) => id !== 'paredes' && id !== 'piso').flatMap(([, meshes]) => meshes)
+  const mount = center && walls.length ? mountOnWall(center, DEVICE_Y.ac, def.offset, walls, blockers, AC_SIZE) : null
+  if (mount) return mount
+  const pos = deviceAnchor(markers, def, DEVICE_Y.ac)
+  return pos ? { position: pos, rotationY: 0 } : null
+}
+
+function AcUnit({ def, mount }: { def: AcDef; mount: WallMount }) {
   const visible = useUiStore((s) => s.layers.ac)
   const ac = useHouseStore((s) => s.acs[def.id])
   const slit = useRef<THREE.MeshBasicMaterial>(null)
@@ -67,13 +85,13 @@ function AcUnit({ def, position }: { def: AcDef; position: THREE.Vector3 }) {
   }
 
   return (
-    <group position={position} visible={visible}>
+    <group position={mount.position} rotation-y={mount.rotationY} visible={visible}>
       <mesh
         onClick={toggle}
         onPointerOver={() => (document.body.style.cursor = 'pointer')}
         onPointerOut={() => (document.body.style.cursor = '')}
       >
-        <boxGeometry args={[2.4, 0.8, 0.8]} />
+        <boxGeometry args={[AC_SIZE.width, AC_SIZE.height, AC_SIZE.depth]} />
         <meshBasicMaterial color={ac.on ? '#ffffff' : '#b4c0bd'} toneMapped={false} />
       </mesh>
       <mesh position={[0, -0.28, 0.41]}>
@@ -106,15 +124,17 @@ function AcUnit({ def, position }: { def: AcDef; position: THREE.Vector3 }) {
   )
 }
 
-export function AcLayer({ markers }: { markers: Markers }) {
+export function AcLayer({ markers, house }: { markers: Markers; house: HouseMaterials }) {
+  // Se calcula una vez por modelo (rayos contra los muros): no depende del estado de los aires
+  const mounts = useMemo(() => new Map(AIR_CONDITIONERS.map((def) => [def.id, placeAc(def, markers, house)])), [markers, house])
   // Vista pública: un aire encendido delata a la persona (el servidor ni siquiera manda su estado)
   const restricted = useHouseStore((s) => s.restricted)
   if (restricted) return null
   return (
     <>
       {AIR_CONDITIONERS.map((def) => {
-        const pos = deviceAnchor(markers, def, DEVICE_Y.ac)
-        return pos ? <AcUnit key={def.id} def={def} position={pos} /> : null
+        const mount = mounts.get(def.id)
+        return mount ? <AcUnit key={def.id} def={def} mount={mount} /> : null
       })}
     </>
   )

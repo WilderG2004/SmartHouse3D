@@ -426,21 +426,31 @@ export interface AcDef {
   id: string
   label: string
   room: string
-  /** Desplazamiento (x, z) respecto al centro de la habitación */
+  /**
+   * Muro preferido: dirección (x, z) desde el centro de la habitación. El equipo se monta en el muro real que haya en esa
+   * dirección (three/wallMount.ts); si ahí hay una ventana o una puerta, va al muro libre más lejano. Solo si no
+   * encuentra ningún muro se usa como desplazamiento desde el centro.
+   */
   offset: [number, number]
+  /**
+   * Luz desde la que se buscan los muros, si el centro de la habitación no sirve: el del dormitorio principal cae en el
+   * muro que lo separa del closet (es el promedio de las dos luces).
+   */
+  anchor?: string
 }
 
 export const AIR_CONDITIONERS: AcDef[] = [
   { id: 'AC_Sala_Principal', label: 'Sala principal', room: 'sala_principal', offset: [3.5, 0] },
-  { id: 'AC_Dormitorio_Principal', label: 'Dormitorio principal', room: 'dormitorio_principal', offset: [2.5, 0] },
+  { id: 'AC_Dormitorio_Principal', label: 'Dormitorio principal', room: 'dormitorio_principal', offset: [2.5, 0], anchor: 'Luz_Dormitorio_Principal' },
   { id: 'AC_Dormitorio_2', label: 'Dormitorio 2', room: 'dormitorio_2', offset: [2, 0] },
   { id: 'AC_Dormitorio_3', label: 'Dormitorio 3', room: 'dormitorio_3', offset: [2, 0] },
-  { id: 'AC_Sala_Estudio', label: 'Sala de estudio', room: 'sala_estudio', offset: [2.5, 0] },
-  { id: 'AC_Cocina', label: 'Cocina', room: 'cocina', offset: [2.5, 0] },
+  // Estudio y cocina: el muro de +x tiene puerta, ventana o muebles altos a la altura del equipo
+  { id: 'AC_Sala_Estudio', label: 'Sala de estudio', room: 'sala_estudio', offset: [0, -2.5] },
+  { id: 'AC_Cocina', label: 'Cocina', room: 'cocina', offset: [0, 2.5] },
 ]
 
-/** Y de las marcas virtuales (clima, A/C) sobre el borde de los muros */
-export const DEVICE_Y = { climate: 6.2, ac: 4.3, plug: 1.6 }
+/** Altura de las marcas virtuales: clima sobre el borde de los muros, A/C en lo alto del muro (por encima de puertas y ventanas), enchufes abajo */
+export const DEVICE_Y = { climate: 6.2, ac: 4.8, plug: 1.6 }
 
 /* ───────────────────────────── Alertas (las calcula Node-RED) ───────────────────────────── */
 

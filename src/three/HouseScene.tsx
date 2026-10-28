@@ -103,7 +103,7 @@ function House() {
       <LightRig markers={markers} />
       <SensorLayer markers={markers} />
       <ClimateLayer markers={markers} />
-      <AcLayer markers={markers} />
+      <AcLayer markers={markers} house={house} />
       <PlugLayer markers={markers} />
       <WalkMode scene={scene} rigs={rigs} markers={markers} />
       {/* Sombra de contacto bajo la casa: la «asienta» en el terreno. Se calcula una sola vez (frames=1). */}

@@ -28,7 +28,7 @@ node infra/redeploy-flow.mjs
 | **Escena 3D** | La posicion inicial de la camara, que tan brillantes se ven las luces y cuanta luz ambiente hay. |
 | **Materiales por colección** | **Las colecciones de Blender** rearmadas por nombre de malla (`COLLECTIONS`: paredes, piso, ventanas, puertas, chapas, camas, mesas/sillas/sofás, mesa de TV, armarios, mesitas, baño, cocina, lavandería), los **acabados PBR** (`FINISHES`: color, rugosidad, metal, vidrio) y cuál lleva cada colección o cada malla (`COLLECTION_FINISH`, `MESH_FINISH`). También la altura del corte de paredes (`WALL_CUT_HEIGHT`), los tonos rápidos de luz (`LIGHT_PRESETS`: cálida 3000 K, fría 6000 K, alerta) y las **zonas de cámara** (`CAMERA_ZONES`). Aquí cambias el aspecto. |
 | **Habitaciones** | Las **11 habitaciones** y el radio de su mancha en el mapa de calor. |
-| **Clima y aire acondicionado** | Como se calienta y enfria la casa, cuanto gasta el aire, y los **6 aires acondicionados** (sala, estudio, cocina y 3 dormitorios). |
+| **Clima y aire acondicionado** | Como se calienta y enfria la casa, cuanto gasta el aire, y los **6 aires acondicionados** (sala, estudio, cocina y 3 dormitorios). En cada aire, `offset` dice **en que muro** va (direccion desde el centro de la habitacion) y `anchor`, desde que luz buscar los muros si el centro no sirve. |
 | **Alertas** | Los limites que activan las alertas: 32 C de temperatura, 85 % de humedad y 1500 W de consumo. |
 | **Sensores simulados** | Que tan realista es lo que inventa Node-RED: cuanta luz entra por las ventanas, el "ruido" de las lecturas y cada cuanto alguien cocina o se ducha. |
 | **Enchufes** | Los **6 enchufes**: cuanto gasta cada aparato y si tienen apagado automatico (la cafetera, a los 20 s) o ciclo (la lavadora). |
