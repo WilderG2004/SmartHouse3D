@@ -62,6 +62,7 @@ Cada carpeta tiene su propio `README.md` que explica cada archivo (empieza por `
 | Pruebas de rechazo de seguridad (solo contra Node-RED propio) | `npm run seguridad:probar` |
 | Verificar la integridad del historial | `npm run seguridad:integridad` |
 | Generar `vercel.json` con la CSP del backend | `npm run seguridad:vercel -- --backend casa-api.midominio.com` |
+| Regenerar el flujo de Render (`infra/nodered/flows.render.json`) tras cambiar el flujo | `npm run render:flujo` |
 | InfluxDB simulado en memoria (pruebas sin Docker) | `npm run influx:simulado` |
 | Configurar Node-RED local (primera vez, pide token) | `node infra/setup-local.mjs` |
 | Cambiar el flujo ya instalado (sin token) | `node infra/redeploy-flow.mjs` |

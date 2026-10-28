@@ -92,7 +92,7 @@ clave de `CASA_PAIRING_KEY` (Operador) o `CASA_ADMIN_KEY` (Administrador, ademas
 | **Administrador** | Todo lo anterior, mas simulaciones, hora simulada y *revocar las otras sesiones*. |
 
 ### Opcional - Todo con Docker
-Si prefieres no instalar nada a mano, mira [`infra/README.md`](infra/README.md): levanta InfluxDB, Node-RED y Grafana con los puertos abiertos solo en tu equipo. Para publicar en internet (frontend en Vercel, backend con certificado), sigue [`infra/despliegue/README.md`](infra/despliegue/README.md).
+Si prefieres no instalar nada a mano, mira [`infra/README.md`](infra/README.md): levanta InfluxDB, Node-RED y Grafana con los puertos abiertos solo en tu equipo. Para publicar en internet (frontend en Vercel, backend con certificado; la opción gratuita es Render), sigue [`infra/despliegue/README.md`](infra/despliegue/README.md).
 
 ### Direcciones utiles
 
@@ -215,12 +215,13 @@ Cada carpeta tiene su propio `README.md`, escrito en palabras sencillas, que exp
 
 | Archivo | Que es |
 |---|---|
-| `package.json` | La "lista de ingredientes" del proyecto y sus comandos: `npm run dev` (enciende la pantalla), `npm run build` (la prepara para publicar), `npm run nodered:build` (arma el flujo), `npm run setup:local` y `npm run flow:redeploy` (los dos instaladores), `npm run nodered:iniciar` (Node-RED con la configuracion segura) y los de seguridad: `seguridad:secretos`, `seguridad:tokens`, `seguridad:probar`, `seguridad:integridad` y `seguridad:vercel`. |
+| `package.json` | La "lista de ingredientes" del proyecto y sus comandos: `npm run dev` (enciende la pantalla), `npm run build` (la prepara para publicar), `npm run nodered:build` (arma el flujo), `npm run setup:local` y `npm run flow:redeploy` (los dos instaladores), `npm run nodered:iniciar` (Node-RED con la configuracion segura) y los de seguridad: `seguridad:secretos`, `seguridad:tokens`, `seguridad:probar`, `seguridad:integridad` y `seguridad:vercel`. Y `render:flujo` (prepara el flujo para Render). |
 | `index.html` | La pagina vacia donde arranca la interfaz: titulo y el espacio donde se dibuja todo. (La letra Inter viene incluida en el proyecto, no se descarga de Google.) |
 | `vite.config.ts` | Ajustes de Vite, la herramienta que enciende la pantalla (usa el puerto 5173). |
 | `tsconfig.json` | Reglas del lenguaje TypeScript para detectar errores al programar. |
 | `.env.example` | Plantilla de ajustes de la pantalla: de donde salen los datos y las direcciones de Node-RED. Se copia como `.env`. **No lleva claves**. |
 | `.gitignore` | Lo que **nunca** se sube a Git: `node_modules`, `.env` y `infra/.env` (secretos), la carpeta de datos de tu Node-RED (`infra/nodered-local/`, con las llaves cifradas), copias de seguridad (`nodered-backups/`, `_respaldo/`) y los resultados de tus pruebas (`infra/pruebas/resultados/`). |
+| `render.yaml` | Publica Node-RED gratis en **Render** (editor apagado, sin secretos en el archivo). Paso a paso en `infra/despliegue/README.md`. |
 | `vercel.json` | Cabeceras de seguridad (CSP, HSTS...) para publicar en Vercel. Se regenera con `npm run seguridad:vercel -- --backend tu-dominio`. |
 | `.env` | Tus ajustes reales (no viene en el zip para no borrar los tuyos). |
 | `AGENTS.md` | Instrucciones para un asistente de programacion (OpenCode, etc.). |

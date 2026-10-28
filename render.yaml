@@ -1,0 +1,53 @@
+# Casa IoT · Node-RED en Render (Blueprint). Paso a paso en infra/despliegue/README.md, sección «Render».
+#
+#   Internet ──https/wss──▶ Render (certificado y proxy de Render) ──▶ Node-RED ──▶ InfluxDB Cloud
+#
+# - El flujo va dentro de la imagen (infra/nodered/Dockerfile.render): un reinicio no lo borra.
+# - El editor de Node-RED queda APAGADO (no hay NODERED_ADMIN_HASH): solo responden /ws/casa-iot y /api/…
+# - Ningún secreto en este archivo. «generateValue» hace que Render invente una clave aleatoria al crear el servicio;
+#   «sync: false» hace que Render te pida el valor en su panel (lo escribes tú, no queda en el repositorio).
+# - Plan gratuito: el servicio se duerme tras 15 minutos sin visitas y tarda cerca de un minuto en despertar.
+services:
+  - type: web
+    name: casa-iot-nodered
+    runtime: docker
+    plan: free
+    region: virginia # la más cercana a InfluxDB Cloud (us-east-1)
+    dockerfilePath: ./infra/nodered/Dockerfile.render
+    dockerContext: ./infra/nodered
+    healthCheckPath: /api/health
+    envVars:
+      # ── Ajustes (no son secretos) ──
+      - key: TZ
+        value: America/Bogota
+      - key: NODERED_BIND
+        value: 0.0.0.0
+      - key: CASA_WS_REQUIRE_ORIGIN
+        value: "on"
+      - key: CASA_TRUST_PROXY
+        value: "on" # Render pone un proxy delante y añade la IP del cliente al final de X-Forwarded-For
+      - key: CASA_VERBOSE_ERRORS
+        value: "off"
+      - key: CASA_INGEST
+        value: "off"
+      # El origen EXACTO de tu frontend en Vercel, p. ej. https://casa-iot.vercel.app (sin barra final)
+      - key: CASA_ALLOWED_ORIGINS
+        sync: false
+
+      # ── Secretos que inventa Render ──
+      - key: NODERED_CREDENTIAL_SECRET
+        generateValue: true
+      - key: CASA_PAIRING_KEY
+        generateValue: true
+      - key: CASA_ADMIN_KEY
+        generateValue: true
+      - key: CASA_DEVICE_KEY
+        generateValue: true
+
+      # ── Secretos que escribes tú en el panel de Render ──
+      - key: INFLUX_TOKEN_WRITE # token de InfluxDB Cloud que SOLO escribe en Casa_IoT y Casa_IoT_integridad
+        sync: false
+      - key: INFLUX_TOKEN_READ # token de InfluxDB Cloud que SOLO lee Casa_IoT
+        sync: false
+      - key: CASA_USERS # tus claves personales (alias:rol:clave), la misma línea de infra/.env
+        sync: false

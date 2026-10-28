@@ -16,6 +16,8 @@ puerto abierto y generan las cabeceras de seguridad para el frontend que sirve V
 | `nginx.conf.template` | Alternativa a Caddy con **límite de frecuencia y de conexiones por IP** (`limit_req`, `limit_conn`), que Caddy no trae de serie. |
 | `generar-vercel-json.mjs` | Genera `vercel.json` (CSP, HSTS, etc.) con el nombre de **tu** backend en `connect-src`. |
 
+¿Sin servidor ni dominio? La opción gratuita es **Render** (sección [Render](#render-gratis-sin-servidor-propio-ni-túnel)): usa `render.yaml` (raíz) e `infra/nodered/Dockerfile.render`.
+
 ## Por qué hace falta TLS (el bloqueo por «contenido mixto»)
 
 Tu frontend en Vercel se sirve por `https://`. Un navegador **no deja** que una página `https://` abra un WebSocket `ws://`
@@ -117,6 +119,87 @@ Arranca con `cloudflared tunnel run casa-iot` y sigue con el paso 4 (Vercel) usa
 
 **Sin verificar:** que `cloudflared` deje como último valor de `X-Forwarded-For` la IP real del cliente (de eso depende el límite por IP de
 `seguridad-ws.js` con `CASA_TRUST_PROXY=on`). El límite de frecuencia por IP lo da una regla de *Rate limiting* del WAF de Cloudflare.
+
+## Render (gratis, sin servidor propio ni túnel)
+
+Node-RED corre en un **servicio web gratuito de Render** y escribe en tu **InfluxDB Cloud**. Render pone el certificado
+(`https://` y `wss://`) y una dirección fija, `https://casa-iot-nodered.onrender.com` (si el nombre está libre). Tu equipo
+puede estar apagado. No hace falta Caddy, nginx, Cloudflare ni ngrok.
+
+| Archivo | Qué hace |
+|---|---|
+| `render.yaml` (raíz) | El *Blueprint*: un servicio web Docker, plan gratuito, región Virginia (junto a InfluxDB Cloud), revisión de salud en `/api/health` y las variables de entorno (las secretas **sin valor**). |
+| `infra/nodered/Dockerfile.render` | Node-RED 5.0.8 + nodo de InfluxDB, con el flujo, `settings.js` y `seguridad-ws.js` **copiados dentro de la imagen** en solo lectura. |
+| `infra/nodered/flows.render.json` | Tu flujo apuntando a InfluxDB Cloud (org «Dev Teams», buckets `Casa_IoT` y `Casa_IoT_integridad`). Se regenera con `npm run render:flujo`. |
+
+**Por qué el flujo va dentro de la imagen:** el disco de un servicio gratuito se borra en cada reinicio y en cada despliegue.
+Como el flujo es parte de la imagen, cada arranque empieza con exactamente lo que hay en el repositorio. Lo que **sí** se
+pierde al reiniciar es el estado en memoria (luces encendidas, sesiones emparejadas): la simulación vuelve a su inicio. Lo ya
+guardado en InfluxDB Cloud no se pierde.
+
+**Cómo queda protegido:** editor de Node-RED **apagado** (no se define `NODERED_ADMIN_HASH`; `/`, `/flows` y `/admin` responden 404),
+`CASA_WS_REQUIRE_ORIGIN=on` (solo tu frontend abre el WebSocket), `CASA_VERBOSE_ERRORS=off`, `CASA_INGEST=off` y ningún secreto
+en el repositorio. Probado en local con los mismos archivos en solo lectura y el puerto 10000: 47 pruebas correctas y 0 con falla
+(las 9 omitidas son las de `/api/ingest`, apagado a propósito).
+
+### Paso a paso
+
+**1. Tokens de InfluxDB Cloud** (en la web de InfluxDB Cloud: *Load Data → API Tokens → Generate API Token → Custom API Token*):
+uno con **Write** en `Casa_IoT` y `Casa_IoT_integridad` (será `INFLUX_TOKEN_WRITE`) y otro con **Read** en `Casa_IoT`
+(será `INFLUX_TOKEN_READ`). Cópialos directamente al paso 3; no los pegues en ningún chat ni archivo del repositorio.
+
+**2. Sube el proyecto a GitHub** (Render construye desde tu repositorio). Antes, regenera el flujo si cambiaste algo:
+
+```powershell
+npm run render:flujo
+git add render.yaml package.json infra/nodered
+git commit -m "Despliegue de Node-RED en Render"
+git push
+```
+
+**3. Crea el servicio:** en [dashboard.render.com](https://dashboard.render.com) → *New → Blueprint* → elige tu repositorio.
+Render lee `render.yaml` y te pide los valores marcados con `sync: false`:
+
+| Variable | Qué pones |
+|---|---|
+| `CASA_ALLOWED_ORIGINS` | La dirección exacta de tu frontend en Vercel, p. ej. `https://casa-iot.vercel.app` (sin barra final) |
+| `INFLUX_TOKEN_WRITE` / `INFLUX_TOKEN_READ` | Los dos tokens del paso 1 |
+| `CASA_USERS` | Tu línea de claves personales. Cópiala al portapapeles **sin verla** y pégala en Render: |
+
+```powershell
+((Select-String -Path infra\.env -Pattern '^CASA_USERS=').Line -replace '^CASA_USERS=', '' -replace "^'|'$", '') | Set-Clipboard
+```
+
+`CASA_PAIRING_KEY`, `CASA_ADMIN_KEY`, `CASA_DEVICE_KEY` y `NODERED_CREDENTIAL_SECRET` las **inventa Render** (`generateValue`); si
+algún día necesitas la clave compartida, la ves en *Environment* del servicio. Cuando termine, comprueba:
+
+```powershell
+curl.exe https://casa-iot-nodered.onrender.com/api/health     # {"status":"ok",…}
+curl.exe -i https://casa-iot-nodered.onrender.com/flows       # 404: el editor no está expuesto
+```
+
+**4. Frontend en Vercel.** En *Settings → Environment Variables* de tu proyecto en Vercel:
+
+| Variable | Valor |
+|---|---|
+| `VITE_NODERED_WS_URL` | `wss://casa-iot-nodered.onrender.com/ws/casa-iot` |
+| `VITE_API_URL` | `https://casa-iot-nodered.onrender.com/api` |
+
+Y regenera las cabeceras para que la CSP deje hablar con Render (luego súbelo a GitHub y vuelve a desplegar en Vercel):
+
+```powershell
+npm run seguridad:vercel -- --backend casa-iot-nodered.onrender.com
+```
+
+Si Render te dio otro nombre (`…-abcd.onrender.com`), usa ese en los tres sitios.
+
+**5. Cambiar el flujo más adelante:** edita `infra/nodered/src/`, ejecuta `npm run nodered:build`, `npm run render:flujo` y haz
+`git push`: Render vuelve a construir la imagen sola.
+
+**Límites del plan gratuito:** el servicio se **duerme** tras 15 minutos sin visitas y tarda cerca de un minuto en despertar (la
+pantalla muestra «reconectando» mientras tanto). Dormido, la simulación no corre y el historial tiene huecos. 750 horas gratis
+al mes por cuenta. **Sin verificar:** que el proxy de Render deje la IP real del cliente como último valor de `X-Forwarded-For`
+(`CASA_TRUST_PROXY=on`); si no fuera así, el límite de conexiones por IP se aplicaría a todos juntos, nunca de menos.
 
 ## Lista de comprobación antes de publicar
 

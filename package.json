@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "nodered:build": "npx tsx infra/nodered/tools/build-flows.mts",
+    "render:flujo": "node infra/nodered/tools/generar-flujo-render.mjs",
     "setup:local": "node infra/setup-local.mjs",
     "flow:redeploy": "node infra/redeploy-flow.mjs",
     "nodered:iniciar": "node infra/iniciar-nodered.mjs",

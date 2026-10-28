@@ -23,6 +23,7 @@ npm run nodered:build
 | `flows.json` | El flujo para **Docker**. |
 | `flows_cred.json` | Solo **referencias** `${INFLUX_TOKEN_WRITE}` / `${INFLUX_TOKEN_READ}`; los tokens reales llegan por variables de entorno (nunca se escriben aqui). |
 | `flows.local.json` | El flujo para **tu** Node-RED (se genera con las variables de abajo). |
+| `flows.render.json` | El flujo para **Render**: `npm run render:flujo` (lo hace `generar-flujo-render.mjs` con tu InfluxDB Cloud ya puesto). |
 
 ### Ajustes opcionales (variables de entorno)
 
