@@ -31,7 +31,7 @@ que el backend hable `wss://` y `https://` con un certificado válido, que es ju
 ```bash
 docker compose -f infra/despliegue/docker-compose.prod.yml config --quiet    # sintaxis del compose (sin --quiet IMPRIME los secretos sustituidos)
 docker run --rm -v $PWD/infra/despliegue/Caddyfile:/etc/caddy/Caddyfile caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile
-docker pull nodered/node-red:5.0.8-22 && docker pull grafana/grafana:11.6.1   # confirma que los tags existen
+docker pull nodered/node-red:5.0.8-24 && docker pull grafana/grafana:11.6.1   # confirma que los tags existen
 ```
 
 Si algún tag no existe en tu registro, cámbialo por uno **concreto** (nunca `latest`) y anota cuál probaste.

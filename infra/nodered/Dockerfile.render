@@ -10,8 +10,8 @@
 # Antes de subir cambios del flujo:  npm run render:flujo   (regenera flows.render.json)
 # Contexto de construcción: esta carpeta (infra/nodered).
 
-# Versión FIJA, la misma del Dockerfile de docker-compose (nunca :latest)
-ARG NODERED_TAG=5.0.8-22
+# Versión FIJA, la misma del Dockerfile de docker-compose (nunca :latest). Node-RED 5 solo publica imágenes con Node 24 (-24)
+ARG NODERED_TAG=5.0.8-24
 FROM nodered/node-red:${NODERED_TAG}
 
 # Nodo de InfluxDB 2.x (versión exacta con la que se probó el flujo)

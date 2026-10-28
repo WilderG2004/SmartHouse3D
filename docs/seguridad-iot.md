@@ -289,7 +289,7 @@ cambios de la alarma y las huellas de integridad.
 | Retención solo al crear el bucket | `npm run seguridad:retencion` (y los instaladores) la aplican también a buckets existentes: 30 días datos y auditoría, 90 huellas |
 | Anti-repetición de `/api/ingest` solo en memoria | Último número de secuencia en disco (contexto `persistente`) + rechazo de lo firmado antes de arrancar |
 | Grafana anónimo + `tlsSkipVerify` | Sin acceso anónimo, sin registro, sin `tlsSkipVerify`; embebido desactivado por defecto |
-| `latest` | `nodered/node-red:5.0.8-22`, `grafana/grafana:11.6.1`, `influxdb:2.7`, `caddy:2.10-alpine` (**tags sin verificar**, ver §9) |
+| `latest` | `nodered/node-red:5.0.8-24`, `grafana/grafana:11.6.1`, `influxdb:2.7`, `caddy:2.10-alpine` (el de Node-RED existe en Docker Hub; **los demás sin verificar**, ver §9) |
 
 ---
 
@@ -379,7 +379,7 @@ pestaña; otra pestaña nueva arranca en solo lectura; «Revocar» baja a la otr
 2. Crear `infra/.env` con `npm run seguridad:secretos` y, con InfluxDB arriba, los dos tokens con `npm run seguridad:tokens`.
 3. Para publicar: seguir `infra/despliegue/README.md` (validar las plantillas, `vercel.json` con tu dominio, `CASA_ALLOWED_ORIGINS` con el origen exacto de
    Vercel).
-4. Comprobar que existen los tags de imagen `5.0.8-22`, `grafana/grafana:11.6.1` y `caddy:2.10-alpine`, o cambiarlos por otros **concretos**.
+4. Comprobar que existen los tags de imagen `5.0.8-24`, `grafana/grafana:11.6.1` y `caddy:2.10-alpine`, o cambiarlos por otros **concretos**.
 5. Pasar `npm run seguridad:probar` contra tu servidor y guardar la salida como evidencia del taller.
 6. **Aplicar la retención** a tus buckets de InfluxDB Cloud: `$env:INFLUX_ADMIN_TOKEN = "…"; npm run seguridad:retencion; Remove-Item Env:INFLUX_ADMIN_TOKEN`
    (Cloud gratuito admite 30 días como máximo: para las huellas usa `--dias-huellas 30` o un plan de pago).
