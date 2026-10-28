@@ -2,7 +2,7 @@
  * Recorrido en primera persona: la camara entra a la casa y se mueve como una persona.
  *
  *   W A S D o flechas = caminar · arrastrar con el mouse = mirar · Shift = correr · E = abrir/cerrar la puerta que miras · Esc = salir
- *   En pantallas tactiles: la palanca de abajo a la izquierda camina (empujarla poco = paso lento), arrastrar un dedo
+ *   En pantallas tactiles: la palanca de abajo al centro camina (empujarla poco = paso lento), arrastrar un dedo
  *   sobre la casa mira y la puerta al frente se abre tocando su aviso (components/WalkHud.tsx).
  *
  * Todo sale del modelo que ya existe (sin tocar Blender):

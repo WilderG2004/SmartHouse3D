@@ -42,7 +42,7 @@ Se activa con el boton **Recorrer la casa** del visor. La camara entra por la pu
 | **Shift** | Correr |
 | **E** | Abrir o cerrar la puerta que tienes al frente |
 | **Esc** | Salir del recorrido (la camara vuelve a la vista de afuera) |
-| Pantalla tactil: **palanca** (abajo a la izquierda) | Caminar hacia donde empujas la perilla; empujarla poco = paso lento |
+| Pantalla tactil: **palanca** (abajo, en el centro) | Caminar hacia donde empujas la perilla; empujarla poco = paso lento |
 | Pantalla tactil: **arrastrar un dedo** sobre la casa | Mirar alrededor |
 | Pantalla tactil: **tocar el aviso** de la puerta | Abrir o cerrar la puerta que tienes al frente |
 
