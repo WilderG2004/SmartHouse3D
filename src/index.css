@@ -230,10 +230,15 @@ select {
 @media (min-width: 1024px) {
   .hud {
     --hud-top: 10.5rem;
-    --hud-right: 27.75rem;
+    --hud-right: 23.75rem; /* panel de 22rem (App.tsx) + márgenes */
   }
   .hud[data-panel='collapsed'] {
     --hud-right: 4.5rem;
+  }
+}
+@media (min-width: 1280px) {
+  .hud:not([data-panel='collapsed']) {
+    --hud-right: 27.75rem; /* panel de 26rem */
   }
 }
 

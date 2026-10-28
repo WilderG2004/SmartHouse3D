@@ -122,7 +122,7 @@ export default function App() {
           <PanelRightOpen size={20} />
         </button>
       ) : (
-        <div className="glass order-3 overflow-hidden rounded-2xl lg:absolute lg:bottom-3 lg:right-3 lg:top-3 lg:z-40 lg:flex lg:w-[26rem] lg:flex-col">
+        <div className="glass order-3 overflow-hidden rounded-2xl lg:absolute lg:bottom-3 lg:right-3 lg:top-3 lg:z-40 lg:flex lg:w-[22rem] lg:flex-col xl:w-[26rem]">
           <div className="hidden items-center justify-between border-b border-line px-4 py-2 lg:flex">
             <span className="flex items-center gap-2 text-sm font-semibold">
               <SlidersHorizontal size={15} className="text-brand-strong" /> Panel de control
@@ -132,7 +132,7 @@ export default function App() {
               onClick={() => setCollapsed(true)}
               title="Plegar el panel para ver más de la casa"
               aria-label="Plegar el panel de control"
-              className="rounded-lg p-1.5 text-mute hover:bg-white/10 hover:text-fg"
+              className="rounded-lg p-2 text-mute hover:bg-white/10 hover:text-fg"
             >
               <PanelRightClose size={16} />
             </button>

@@ -9,7 +9,7 @@ import { telemetry } from '../services/telemetry'
 import { useSessionStore } from '../store/useSessionStore'
 import type { SessionRole } from '../types/iot'
 
-const chip = 'flex items-center gap-2 rounded-full border bg-white/[0.04] px-3 py-1.5 text-sm'
+const chip = 'flex min-h-8 items-center gap-2 rounded-full border bg-white/[0.04] px-3 py-1.5 text-sm'
 
 /** Candado: ¿el canal con el backend va cifrado (wss://) o no (ws://)? */
 export function TransportChip() {

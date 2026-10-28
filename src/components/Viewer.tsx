@@ -191,7 +191,7 @@ function LayersTab() {
               type="button"
               aria-pressed={layers[key]}
               onClick={() => toggleLayer(key)}
-              className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${
+              className={`flex min-h-8 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${
                 layers[key] ? 'bg-cool-soft text-cool-strong' : 'text-mute hover:bg-white/5 hover:text-fg'
               }`}
             >
@@ -268,7 +268,7 @@ function AmbientTab() {
 function SidePanel() {
   const [tab, setTab] = useState<'capas' | 'ambiente'>('capas')
   // En el celular empieza plegado para no tapar la casa
-  const [open, setOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 1024)
+  const [open, setOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 1280) // entre 1024 y 1279 px taparía media casa
 
   return (
     <div className="glass absolute left-3 top-[var(--hud-top)] z-30 w-72 max-w-[calc(100%-1.5rem)] rounded-2xl">

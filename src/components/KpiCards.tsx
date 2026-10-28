@@ -27,13 +27,14 @@ function Kpi({
 }) {
   return (
     <div className={`glass min-w-0 rounded-2xl px-3.5 py-2.5 ${alert ? 'alarm-pulse !border-bad' : ''}`} title={hint}>
-      <div className="flex items-center gap-3">
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${tint}`}>{icon}</span>
-        <div className="min-w-0">
+      {/* Ícono más chico en el celular; sin ícono entre 1024 y 1279 px, donde las 4 tarjetas comparten fila con el panel */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-xl sm:h-9 sm:w-9 lg:hidden xl:grid ${tint}`}>{icon}</span>
+        <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-mute">{label}</p>
-          <div className="flex items-baseline gap-1">
-            <span className={`text-xl font-bold tracking-tight ${tone}`}>{value}</span>
-            {unit && <span className="text-sm font-medium text-mute">{unit}</span>}
+          <div className="flex min-w-0 items-baseline gap-1">
+            <span className={`truncate text-lg font-bold tracking-tight sm:text-xl lg:text-lg xl:text-xl ${tone}`}>{value}</span>
+            {unit && <span className="shrink-0 text-sm font-medium text-mute">{unit}</span>}
           </div>
         </div>
       </div>

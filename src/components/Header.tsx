@@ -14,7 +14,7 @@ const STATUS: Record<ConnectionStatus, { text: string; dot: string }> = {
   disconnected: { text: 'Desconectado', dot: 'bg-bad' },
 }
 
-const chip = 'flex items-center gap-2 rounded-full border bg-white/[0.04] px-3 py-1.5 text-sm'
+const chip = 'flex min-h-8 items-center gap-2 rounded-full border bg-white/[0.04] px-3 py-1.5 text-sm'
 
 export function Header() {
   const status = useHouseStore((s) => s.connection)

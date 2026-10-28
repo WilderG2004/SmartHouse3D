@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-/** Interruptor accesible (role="switch"). Encendido = color de marca. */
+/** Interruptor accesible (role="switch"). Encendido = color de marca. La pista mide 44×24, pero el área que se toca, 48×32. */
 export function Switch({
   checked,
   onChange,
@@ -17,13 +17,15 @@ export function Switch({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-brand' : 'bg-white/15'}`}
+      className="grid h-8 w-12 shrink-0 place-items-center rounded-full"
     >
-      <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-          checked ? 'left-[22px]' : 'left-0.5'
-        }`}
-      />
+      <span className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-brand' : 'bg-white/15'}`}>
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            checked ? 'left-[22px]' : 'left-0.5'
+          }`}
+        />
+      </span>
     </button>
   )
 }
