@@ -149,18 +149,29 @@ function MiniMap() {
 
 /* ───────────── Palanca tactil ───────────── */
 
-const TOUCH = '(any-pointer: coarse)'
-const subscribeTouch = (cb: () => void) => {
-  const mq = window.matchMedia(TOUCH)
-  mq.addEventListener('change', cb)
-  return () => mq.removeEventListener('change', cb)
+/** true mientras se cumpla la media query (se actualiza al girar el telefono o cambiar el tamano de la ventana) */
+function useMedia(query: string) {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(query)
+      mq.addEventListener('change', cb)
+      return () => mq.removeEventListener('change', cb)
+    },
+    () => window.matchMedia(query).matches,
+  )
 }
-/** true si el equipo tiene pantalla tactil (celular, tablet, portatil con pantalla tactil) */
-const useTouch = () => useSyncExternalStore(subscribeTouch, () => window.matchMedia(TOUCH).matches)
+/** Pantalla tactil: celular, tablet, portatil con pantalla tactil */
+const TOUCH = '(any-pointer: coarse)'
+/** Pantalla baja (un celular en horizontal): el mini-mapa taparia media casa y el boton de la puerta */
+const SHORT = '(max-height: 599px)'
 
 const PAD_R = 44 // cuanto se puede alejar la perilla del centro, en px
 
-/** Palanca virtual: se arrastra la perilla desde el centro; la direccion y cuanto se empuja van a walkState.joy */
+/**
+ * Palanca virtual: se arrastra la perilla desde el centro; la direccion y cuanto se empuja van a walkState.joy.
+ * Con el telefono en vertical va abajo al centro (el pulgar llega con cualquier mano); en horizontal, abajo a la
+ * izquierda, como en los juegos (la mano derecha queda libre para mirar y para el boton de la puerta).
+ */
 function Joystick() {
   const knob = useRef<HTMLSpanElement>(null)
   const origin = useRef<{ x: number; y: number; id: number } | null>(null)
@@ -191,7 +202,7 @@ function Joystick() {
     <div
       role="application"
       aria-label="Palanca para caminar: arrastra la perilla hacia donde quieres ir"
-      className="glass absolute bottom-24 left-1/2 z-30 grid h-32 w-32 -translate-x-1/2 touch-none select-none place-items-center rounded-full"
+      className="glass absolute bottom-24 left-1/2 z-30 grid h-32 w-32 -translate-x-1/2 touch-none select-none place-items-center rounded-full landscape:left-3 landscape:translate-x-0"
       onPointerDown={(e) => {
         const r = e.currentTarget.getBoundingClientRect()
         origin.current = { x: r.left + r.width / 2, y: r.top + r.height / 2, id: e.pointerId }
@@ -223,7 +234,8 @@ export function WalkHud() {
   const climate = useHouseStore((s) => (room && room !== 'exterior' ? s.climate[room] : undefined))
   const lights = useHouseStore((s) => s.lights)
   const hintOpen = useHouseStore((s) => (hint ? !!s.doors[hint.id]?.open : false))
-  const touch = useTouch()
+  const touch = useMedia(TOUCH)
+  const short = useMedia(SHORT)
 
   const label = room === 'exterior' ? 'Afuera de la casa' : room ? roomLabel(room) : '…'
   const roomLights = room && room !== 'exterior' ? LIGHTS.filter((l) => l.room === roomLabel(room)) : []
@@ -255,15 +267,16 @@ export function WalkHud() {
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 z-30 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 ring-2 ring-black/30" />
 
       {/* Puerta al frente: tecla E, o tocar (o hacer clic en) el aviso.
-          En pantalla táctil es un botón corto a la derecha de la palanca, a su misma altura: queda bajo el pulgar. */}
+          En pantalla táctil es un botón corto justo encima de la palanca (la sigue al girar el teléfono): el mismo pulgar
+          llega sin soltarla del todo, y no choca con el mini-mapa ni con el panel de la derecha. */}
       {hint && (
         <button
           type="button"
           onClick={() => commands.setDoor(hint.id, !hintOpen)}
           aria-label={`${hintOpen ? 'Cerrar' : 'Abrir'} la puerta ${hint.label}`}
-          className={`glass absolute z-30 flex min-h-10 items-center rounded-full py-2 text-sm font-medium text-fg hover:border-brand ${
+          className={`glass absolute z-40 flex min-h-10 items-center rounded-full py-2 text-sm font-medium text-fg hover:border-brand ${
             touch
-              ? 'bottom-[8.75rem] right-3 max-w-[calc(50%-4.75rem)] gap-1.5 px-3'
+              ? 'bottom-[14.5rem] left-1/2 -translate-x-1/2 gap-1.5 px-3 landscape:left-[4.75rem]'
               : 'bottom-24 left-1/2 max-w-[calc(100%-1.5rem)] -translate-x-1/2 gap-2.5 px-4 md:left-[calc((100%-var(--hud-right)+0.75rem)/2)] md:max-w-[calc(100%-var(--hud-right)-16rem)] lg:bottom-20'
           }`}
         >
@@ -306,8 +319,8 @@ export function WalkHud() {
         )}
       </div>
 
-      {/* Mini-mapa y ayuda */}
-      <div className="glass absolute bottom-20 right-[var(--hud-right)] z-30 hidden flex-col gap-2 rounded-xl p-2.5 md:flex">
+      {/* Mini-mapa y ayuda (no en pantallas bajas: un celular en horizontal) */}
+      <div className={`glass absolute bottom-20 right-[var(--hud-right)] z-30 hidden flex-col gap-2 rounded-xl p-2.5 ${short ? '' : 'md:flex'}`}>
         <MiniMap />
         <p className="max-w-[196px] text-xs leading-snug text-mute">
           {touch ? (
