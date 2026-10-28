@@ -3,9 +3,9 @@
 **En una frase:** estos archivos ponen un proxy con certificado delante de Node-RED, dejan InfluxDB y Grafana sin ningún
 puerto abierto y generan las cabeceras de seguridad para el frontend que sirve Vercel.
 
-> ⚠ **Estado de estos archivos:** son **plantillas escritas pero no probadas** con Docker, Caddy, nginx ni Vercel (el
-> entorno donde se escribieron no tenía Docker ni acceso a esos registros). Las partes de Node-RED, firmas, sesiones e
-> integridad **sí** se probaron con un Node-RED 5.0.8 real. Antes de apoyarte en esto, ejecuta las validaciones del paso 0.
+> **Estado (2026-10-28):** el camino **Render + Vercel + InfluxDB Cloud** está **desplegado y funcionando** (comprobaciones en la
+> sección [Render](#render-gratis-sin-servidor-propio-ni-túnel)). El compose de producción, Caddy, nginx y Cloudflare Tunnel siguen siendo
+> **plantillas sin probar** con Docker real: antes de apoyarte en ellas, ejecuta las validaciones del paso 0.
 
 ## Qué hay en la carpeta
 
@@ -141,6 +141,22 @@ guardado en InfluxDB Cloud no se pierde.
 `CASA_WS_REQUIRE_ORIGIN=on` (solo tu frontend abre el WebSocket), `CASA_VERBOSE_ERRORS=off`, `CASA_INGEST=off` y ningún secreto
 en el repositorio. Probado en local con los mismos archivos en solo lectura y el puerto 10000: 47 pruebas correctas y 0 con falla
 (las 9 omitidas son las de `/api/ingest`, apagado a propósito).
+
+**Comprobado en producción (2026-10-28), desde fuera:**
+
+| Petición | Respuesta |
+|---|---|
+| `GET /api/health` | 200 `{"status":"ok","simulation":true,…}` |
+| `/`, `/flows`, `/settings`, `/admin`, `/auth/login` | 404 (no hay editor ni API de administración) |
+| `GET /api/history/power` sin clave | 401 |
+| `/api/health` con `Origin` ajeno | sin `Access-Control-Allow-Origin` |
+| WebSocket con un `Origin` que no es el de la interfaz | 403 |
+
+Render responde detrás de Cloudflare (`Server: cloudflare`). Desde una red doméstica en Colombia, una ida y vuelta HTTP a `/api/health` tarda
+unos 130 ms (mediana), casi todo distancia física hasta Virginia.
+
+**Lección del primer despliegue:** el build falló porque la imagen `nodered/node-red:5.0.8-22` no existe: Node-RED 5 solo publica imágenes con
+Node 24. Se usa `5.0.8-24`. Antes de fijar un tag, compruébalo en Docker Hub.
 
 ### Paso a paso
 

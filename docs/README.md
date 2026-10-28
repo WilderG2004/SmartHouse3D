@@ -24,7 +24,7 @@
 | Las herramientas de seguridad (secretos, tokens, pruebas, integridad) | `infra/README.md`, seccion "Seguridad: los comandos" |
 | Que pieza de Node-RED hace cada control (sesion, confirmacion, firma, auditoria) | `infra/nodered/src/README.md` |
 | Los resultados de las pruebas en tu equipo | `infra/pruebas/resultados/` (no se sube a Git); la evidencia entregada esta en `docs/evidencia/` |
-| Como publicar el backend con TLS y el frontend en Vercel | `infra/despliegue/README.md` |
+| Como publicar el backend (Render, el que esta en produccion) y el frontend en Vercel | `infra/despliegue/README.md` |
 | El modelo 3D de la casa | `public/README.md` |
 | Como funciona el recorrido en primera persona | `src/three/README.md` (seccion "Recorrer la casa") |
 | Instrucciones para un asistente de programacion | `AGENTS.md` |

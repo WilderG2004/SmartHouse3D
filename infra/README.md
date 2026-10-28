@@ -19,7 +19,7 @@
 | `pruebas/influx-simulado.mjs` | **Un InfluxDB de mentira (en memoria)** para probar la logica de seguridad sin Docker (tambien el cambio de retencion). No evalua Flux. | Solo para pruebas. |
 | `lib/envfile.mjs` | Lector y escritor de archivos `.env` que conserva comentarios. | No se toca. |
 | `docker-compose.yml` | **La instalacion "todo en uno"** con Docker (InfluxDB + Node-RED + Grafana), con puertos solo en `127.0.0.1` y sin secretos escritos. | Si no quieres instalar nada a mano. |
-| `despliegue/` | **Publicar en internet**: proxy con TLS (Caddy o nginx), compose de produccion y generador de `vercel.json`. Ver `despliegue/README.md`. | Al publicar. |
+| `despliegue/` | **Publicar en internet**: Render (gratis, el que esta en produccion: `render.yaml` en la raiz), proxy con TLS (Caddy o nginx), compose de produccion y generador de `vercel.json`. Ver `despliegue/README.md`. | Al publicar. |
 | `.env.example` | Plantilla **sin valores** de las variables del backend. Se copia como `infra/.env` (o lo crea `generar-secretos.mjs`). | Referencia. |
 | `nodered/` | **El flujo de Node-RED** y la maquina que lo arma. Ver `nodered/README.md`. | Para cambiar como piensa la casa. |
 | `grafana/` | **Los tableros de Grafana**, ya preparados. Ver `grafana/README.md`. | Solo con Docker. |
@@ -107,7 +107,7 @@ npm run seguridad:secretos -- --limpiar-previas                                 
 #   (rotar CASA_DEVICE_KEY deja sin verificar las huellas de integridad anteriores)
 npm run seguridad:tokens        # crea los dos tokens de InfluxDB (solo escribe / solo lee)
 npm run nodered:iniciar         # arranca tu Node-RED local con settings endurecidos y esos secretos
-npm run seguridad:probar        # 50 pruebas de rechazo contra TU Node-RED (-- --incluir-revocar para admin.revoke)
+npm run seguridad:probar        # 65 pruebas de rechazo contra TU Node-RED (-- --incluir-revocar para admin.revoke)
 npm run seguridad:integridad    # recalcula las huellas del historial y avisa si algo cambio
 npm run seguridad:vercel -- --backend casa-api.midominio.com   # genera vercel.json con la CSP de tu backend
 npm run influx:simulado         # InfluxDB de mentira para probar sin Docker (no evalua Flux)
@@ -117,6 +117,30 @@ npm run seguridad:retencion     # 30 dias para los datos y 90 para las huellas (
 Todos **evitan imprimir claves** (salvo `seguridad:secretos`, que muestra **una vez** la contrasena del editor). `seguridad:probar` simula ataques:
 usalo **solo** contra tu propio servidor. Toma las claves de la terminal o, si no estan, de `infra/.env` (sin mostrarlas).
 Las pruebas B (telemetria firmada) solo corren con `CASA_INGEST=on`; vuelve a `off` al terminar y reinicia Node-RED.
+
+### Claves personales (una por persona)
+
+Cada persona que vaya a usar la pantalla deberia tener **su propia clave**: la auditoria anota su alias y se le puede quitar el acceso sin
+cambiar la de los demas. Todo se hace en **tu propia ventana de PowerShell**, en la carpeta del proyecto, y ninguna clave aparece en pantalla:
+
+```powershell
+npm run seguridad:secretos -- --usuario ana:operador       # crea la clave de «ana» (lector | operador | administrador) en CASA_USERS de infra/.env
+npm run seguridad:secretos -- --usuario ana:operador --rotar ana   # le da una clave nueva (la anterior deja de valer)
+
+# copiar al portapapeles SOLO la clave de «ana», para pasarsela por un canal privado
+$fila = (Select-String -Path infra\.env -Pattern '^CASA_USERS=').Line -replace '^CASA_USERS=', '' -replace "^'|'$", ''
+(($fila -split ',') | Where-Object { $_ -like 'ana:*' }) -replace '^[^:]+:[^:]+:', '' | Set-Clipboard
+Remove-Variable fila
+
+# copiar la linea COMPLETA de CASA_USERS (todas las personas), para pegarla en Render ▸ Environment
+((Select-String -Path infra\.env -Pattern '^CASA_USERS=').Line -replace '^CASA_USERS=', '' -replace "^'|'$", '') | Set-Clipboard
+
+Set-Clipboard -Value ' '                                   # al terminar, limpia el portapapeles
+```
+
+El alias admite letras, numeros, `.`, `_` y `-` (hasta 32) y no puede empezar por `compartida-` (reservado para las claves compartidas). Node-RED
+lee `CASA_USERS` **al arrancar**: reinicialo (en tu equipo, `npm run nodered:iniciar`; en Render, guardar la variable vuelve a desplegar).
+No pegues `CASA_USERS` ni una clave en un chat ni en un documento; si pasa, rotala.
 
 **Comprobar que tu Node-RED es el seguro** (PowerShell): `Get-NetTCPConnection -LocalPort 1880 -State Listen` debe mostrar `127.0.0.1`,
 `curl.exe -s http://127.0.0.1:1880/auth/login` debe traer `"type":"credentials"` y `http://127.0.0.1:1880/flows` sin iniciar sesion debe dar **401**.

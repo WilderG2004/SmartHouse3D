@@ -42,7 +42,7 @@ Cada carpeta tiene su propio `README.md` que explica cada archivo (empieza por `
 - El script **no borra** los demas flujos del usuario y guarda una copia en `nodered-backups/`; no la elimines.
 - No edites `infra/nodered/flows*.json` a mano: se generan. Cambia `src/config/house.config.ts` o `infra/nodered/src/*.js`
   y ejecuta `npm run nodered:build` (y para el flujo local: `FLOWS_FILE=flows.local.json NO_CRED=1 INFLUX_URL=https://us-east-1-1.aws.cloud2.influxdata.com INFLUX_BUCKET=Casa_IoT npm run nodered:build`).
-- Docker es opcional (`infra/docker-compose.yml`, necesita `infra/.env`); el camino normal del usuario es Node-RED e InfluxDB locales. Para publicar: `infra/despliegue/README.md` (plantillas sin probar con Docker real).
+- Docker es opcional (`infra/docker-compose.yml`, necesita `infra/.env`); el camino normal del usuario es Node-RED e InfluxDB locales. Para publicar: `infra/despliegue/README.md`. **En producción:** Node-RED en Render (`render.yaml`, `infra/nodered/Dockerfile.render`, flujo `infra/nodered/flows.render.json`) + interfaz en Vercel + InfluxDB Cloud. Tras cambiar el flujo: `npm run nodered:build`, `npm run render:flujo` y `git push` (Render reconstruye solo). Los secretos de Render viven solo en su panel. El compose de producción, Caddy y nginx siguen sin probar.
 - Para ver los datos en la interfaz: `npm run dev` (por defecto usa Node-RED; `VITE_TELEMETRY_MODE=simulated` es solo para desarrollo sin Node-RED).
 - No muevas generacion de datos, alertas ni calculos a React: viven en Node-RED (`infra/nodered/src/*.js`). La interfaz solo muestra y envia ordenes.
 

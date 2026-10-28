@@ -12,9 +12,9 @@ D = disponibilidad):
 | **R1** | Control no autorizado: alguien que **no debería** manda una orden (abrir una puerta, desarmar la alarma) porque el canal no verifica quién la envía. |
 | **R2** | Exposición o almacenamiento inseguro de **credenciales y servicios**: tokens en el repositorio, puertos abiertos, paneles sin contraseña. |
 
-**Alcance:** datos en tránsito e integridad de lo que se manda y se guarda. **No** hay inicio de sesión de personas, registro ni
-recuperación de contraseña: la identidad que se verifica es la del **dispositivo y la sesión** (la pantalla emparejada), no la de una
-persona. Los roles Administrador / Operador / Lector del taller se convirtieron en **capacidades del canal** (qué tipo de mensaje puede
+**Alcance:** datos en tránsito e integridad de lo que se manda y se guarda. **No** hay registro de cuentas ni recuperación de
+contraseña. La identidad que se verifica es la del **dispositivo** y la de la **sesión** (la pantalla emparejada); si la sesión se empareja
+con una **clave personal** (`CASA_USERS`), también el **alias** de esa persona, que queda en la auditoría. Los roles Administrador / Operador / Lector del taller se convirtieron en **capacidades del canal** (qué tipo de mensaje puede
 enviar cada sesión). Toda la lógica vive en Node-RED; React solo muestra y envía órdenes.
 
 ---
@@ -33,7 +33,10 @@ enviar cada sesión). Toda la lógica vive en Node-RED; React solo muestra y env
 - **Prueba:** 48 pruebas de rechazo automáticas contra un Node-RED 5.0.8 real (48/48 correctas) y 30 comprobaciones de la interfaz en un
   navegador real con la política CSP activa (30/30). Después se añadieron A14f-A14i (confirmación de puertas del perímetro y escenas que
   desarman): la ejecución local del 2026-10-17 dio **49/50 correctas y 1 omitida** (A15). Ver §7.
-- **Qué no está probado:** Docker, Compose, Caddy, nginx, Grafana, InfluxDB real, Vercel. Son plantillas. Ver §9.
+- **Desplegado (2026-10-28):** Node-RED en **Render** (imagen Docker `infra/nodered/Dockerfile.render`, editor apagado), la interfaz en
+  **Vercel** y los datos en **InfluxDB Cloud**, con comprobaciones externas (§7). Pruebas del 2026-10-27: **65/65** contra un Node-RED de
+  prueba y **47 correctas, 0 fallas** con la configuración de Render.
+- **Qué no está probado:** el compose de producción, Caddy, nginx, Grafana y Cloudflare Tunnel. Son plantillas. Ver §9.
 
 ### Las 5 medidas de mayor impacto
 
@@ -109,6 +112,7 @@ Esfuerzo estimado para una persona que ya conoce el proyecto. **Estado:** ✅ he
 | **M4** Telemetría firmada (HMAC-SHA256 con clave **por dispositivo**, derivada de una clave maestra), ventana de ±30 s, secuencia creciente, esquema y rangos estrictos, anomalías → cuarentena; ruta `POST /api/ingest` para un dispositivo externo | R1 (H13) | 2 días | ✅ |
 | **M4b** Huella (hash) encadenada por bloque de tiempo, en un bucket **aparte**, y verificador (`npm run seguridad:integridad`) | R1 · I (H16) | 1 día | ✅ (con InfluxDB simulado) · 🟡 contra InfluxDB real |
 | **M2c** Proxy con TLS (Caddy/nginx), red interna sin salida, solo 80/443 publicados | R2 (H5, H11) | 1 día | 🟡 plantillas sin probar |
+| **M2d** Publicación en Render: imagen con el flujo en solo lectura, editor apagado, TLS de Render, secretos solo en el panel (`generateValue` / `sync: false`) | R2 (H5, H11) | 3 h | ✅ desplegado (2026-10-28) |
 | **M8** Un ESP32 real con firma en el dispositivo; clave por dispositivo en almacenamiento seguro del chip; TLS mutuo | R1 · I | 1–2 semanas | ⬜ no hay hardware |
 | **M9** Almacén de secretos (Docker secrets, Vault) en vez de un archivo `.env` | R2 · C | 1 día | ⬜ |
 
@@ -163,6 +167,10 @@ flowchart LR
 | Telemetría → InfluxDB | HMAC por dispositivo, ventana, secuencia, esquema, cuarentena | `src/86-firmar-telemetria.js` · `87-validar-telemetria.js` |
 | Rechazos → registro | Medición `audit` sin secretos, con tope por segundo | `src/08-auditar.js` |
 | InfluxDB | Token de solo escritura (Node-RED) y de solo lectura (consultas, Grafana); huellas en un bucket aparte | `crear-tokens-influx.mjs` |
+
+**Despliegue actual (Render):** el «Servidor propio» del diagrama lo reemplaza un servicio web de Render. Render pone el TLS y el proxy
+(detrás de Cloudflare), así que no hay Caddy, nginx ni red Docker interna, e InfluxDB es InfluxDB Cloud. Los controles de Node-RED son los
+mismos; los secretos llegan como variables de entorno del panel de Render. Paso a paso: `infra/despliegue/README.md`, sección «Render».
 | Administración | Editor con `adminAuth`; apagado si no hay hash; Grafana sin anónimo | `infra/nodered/settings.js` |
 
 ---
@@ -348,6 +356,15 @@ durante la prueba): **49 correctas · 0 fallas · 1 omitida** (A15, sin `--inclu
 confirmación y se ejecuta al confirmar, puerta interior no la pide, escena que desarma la pide). El resultado queda en
 `infra/pruebas/resultados/` (ignorada por Git); `seg_final.json` sigue siendo la evidencia entregada.
 
+**Ejecuciones del 2026-10-27** (después de ocultar luces, consumo y luminosidad en la vista pública y de añadir las claves personales):
+
+- Node-RED de prueba aislado (puerto 1881, InfluxDB simulado, `CASA_INGEST=on`, `--incluir-revocar`): **65 correctas · 0 fallas · 0 omitidas**.
+- Configuración de Render (los mismos archivos de la imagen en solo lectura, editor apagado, puerto 10000): **47 correctas · 0 fallas · 9 omitidas**
+  (las B: la ingesta está apagada a propósito). El rechazo sin `Origin` (`CASA_WS_REQUIRE_ORIGIN=on`) se comprobó aparte: 403.
+
+**Producción (2026-10-28), desde fuera contra Render:** `/api/health` 200; `/`, `/flows`, `/settings`, `/admin` y `/auth/login` 404; historial
+sin clave 401; CORS sin cabecera para un origen ajeno; WebSocket con `Origin` ajeno 403.
+
 Las cinco pruebas que pide el taller:
 
 | Prueba | Precondición | Acción | Resultado esperado | Evidencia |
@@ -379,7 +396,8 @@ pestaña; otra pestaña nueva arranca en solo lectura; «Revocar» baja a la otr
 2. Crear `infra/.env` con `npm run seguridad:secretos` y, con InfluxDB arriba, los dos tokens con `npm run seguridad:tokens`.
 3. Para publicar: seguir `infra/despliegue/README.md` (validar las plantillas, `vercel.json` con tu dominio, `CASA_ALLOWED_ORIGINS` con el origen exacto de
    Vercel).
-4. Comprobar que existen los tags de imagen `5.0.8-24`, `grafana/grafana:11.6.1` y `caddy:2.10-alpine`, o cambiarlos por otros **concretos**.
+4. Comprobar que existen los tags de imagen `grafana/grafana:11.6.1` y `caddy:2.10-alpine`, o cambiarlos por otros **concretos**
+   (`nodered/node-red:5.0.8-24` ya se comprobó: es la que usa Render).
 5. Pasar `npm run seguridad:probar` contra tu servidor y guardar la salida como evidencia del taller.
 6. **Aplicar la retención** a tus buckets de InfluxDB Cloud: `$env:INFLUX_ADMIN_TOKEN = "…"; npm run seguridad:retencion; Remove-Item Env:INFLUX_ADMIN_TOKEN`
    (Cloud gratuito admite 30 días como máximo: para las huellas usa `--dias-huellas 30` o un plan de pago).
@@ -402,13 +420,19 @@ pestaña; otra pestaña nueva arranca en solo lectura; «Revocar» baja a la otr
   `CASA_DEVICE_KEY` puede fabricar firmas y huellas válidas.
 - **La huella dice *que* un bloque cambió, no *cuál* punto**; la cadena vuelve a empezar (`GENESIS`) cuando se reinicia Node-RED y el bloque en
   curso al arrancar no se firma.
-- **La clave de emparejamiento la conoce quien la escribe**: es un secreto compartido, no una identidad personal. Quien la copie de una pantalla
-  tiene el mismo rol. Se mitiga con `admin.revoke`, la rotación y la confirmación en dos pasos (que protege contra repetición y errores, **no**
+- **Las claves compartidas** (`CASA_PAIRING_KEY`, `CASA_ADMIN_KEY`) no identifican a una persona; por eso cada persona debería usar su **clave
+  personal** (`CASA_USERS`), que deja su alias en la auditoría. Aun así, toda clave es un **secreto portador sin segundo factor**: quien la
+  copie tiene ese rol. Se mitiga con `admin.revoke`, la rotación y la confirmación en dos pasos (que protege contra repetición y errores, **no**
   contra alguien que ya tiene una sesión de Operador).
 - **Docker, Compose, Caddy, nginx, Grafana, InfluxDB real y Vercel no se probaron** (no había Docker ni acceso a esos registros). El simulador de
   InfluxDB (`infra/pruebas/influx-simulado.mjs`) es una prueba de lógica: no evalúa Flux. *Actualización 2026-10-17:* la ejecución local sí usó
   **InfluxDB Cloud real** (escritura, lectura e historial verificados, 49/50 pruebas); la sintaxis de `docker-compose.prod.yml` se validó con
   `config --quiet`. Siguen **sin probar** Caddy, nginx, Grafana, Vercel y Cloudflare Tunnel (incluido qué IP llega en `X-Forwarded-For` a través del túnel).
+  *Actualización 2026-10-28:* Node-RED en Render (Docker) y la interfaz en Vercel **sí** están desplegados y funcionando. Siguen sin probar
+  Caddy, nginx, Grafana, el compose de producción y Cloudflare Tunnel.
+- **Render gratuito:** el servicio se duerme tras 15 minutos sin visitas; al despertar, el estado en memoria (sesiones emparejadas, luces,
+  alarma) vuelve al inicial y la cadena de huellas empieza de nuevo (`GENESIS`). El TLS termina en el proxy de Render: el salto hasta el
+  contenedor es interno de Render. Sin verificar: que Render deje la IP real del cliente como último valor de `X-Forwarded-For`.
 - **La protección depende de cómo se arranca Node-RED.** Un `node-red` a secas usa `~/.node-red/settings.js`: escucha en `0.0.0.0`, deja el editor
   sin contraseña, no controla el `Origin` y no carga las claves (nadie puede emparejar). Así se encontró funcionando en un equipo de prueba;
   las pruebas C4/C5 lo detectan.
