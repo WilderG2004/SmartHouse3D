@@ -35,7 +35,7 @@ export function Header() {
         </span>
         <div>
           <h1 className="text-lg font-bold tracking-tight">
-            Casa IoT <span className="font-medium text-mute">· Gemelo digital</span>
+            SmartHouse3D <span className="font-medium text-mute">· Casa IoT</span>
           </h1>
           <p className="hidden text-xs text-mute 2xl:block">Iluminación, clima, energía y seguridad en una sola vista</p>
         </div>
