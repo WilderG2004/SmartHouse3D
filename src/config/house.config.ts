@@ -1,5 +1,5 @@
 /**
- * Configuración central del gemelo digital.
+ * Configuración central de SmartHouse3D.
  *
  * TODO lo que depende de los nombres de nodos del .glb vive aquí.
  * Si en Blender renombras un Empty, solo cambias el `id` correspondiente.

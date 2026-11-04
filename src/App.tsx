@@ -48,7 +48,7 @@ const subscribeWide = (cb: () => void) => {
 const useWide = () => useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches)
 
 /**
- * HUD del gemelo digital.
+ * HUD de SmartHouse3D.
  *   Escritorio (≥ 1024 px): la casa en 3D ocupa TODA la pantalla y encima flotan, como vidrio, la barra de estado con
  *   los 4 indicadores (arriba), el panel de control (derecha, plegable), los controles del visor y la hoja de analítica.
  *   Celular / tablet: lo mismo en columna (barra, indicadores, casa, panel, analítica).

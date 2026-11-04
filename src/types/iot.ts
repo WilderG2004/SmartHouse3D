@@ -1,5 +1,5 @@
 /**
- * Contrato de datos del gemelo digital.
+ * Contrato de datos de SmartHouse3D.
  *
  * Este archivo es el "idioma común" entre:
  *   - Node-RED por WebSocket (la fuente de datos real),

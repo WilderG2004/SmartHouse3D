@@ -1,5 +1,5 @@
 /**
- * Estado del gemelo digital (lado lectura).
+ * Estado de SmartHouse3D (lado lectura).
  * Solo lo modifican los mensajes del adaptador (apply). La UI nunca escribe aquí
  * directamente: envía comandos con `telemetry.send(...)` y espera el eco.
  */
