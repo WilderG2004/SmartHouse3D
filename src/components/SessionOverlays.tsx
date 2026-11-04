@@ -2,8 +2,9 @@
  * Ventanas y avisos de la sesión: emparejar, confirmar una acción sensible y mensajes de rechazo.
  * Se montan una sola vez en App.
  */
-import { CircleCheck, Info, KeyRound, LogOut, ShieldAlert, Timer, TriangleAlert, X } from 'lucide-react'
+import { CircleCheck, CirclePlay, GraduationCap, Info, KeyRound, LogOut, ShieldAlert, Timer, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { DEMO_CREDENTIAL, VIDEO_URL } from '../config/demo.config'
 import { ROLE_HELP, ROLE_LABEL } from '../config/security.config'
 import { telemetry } from '../services/telemetry'
 import { useSessionStore, type Notice, type PendingConfirm } from '../store/useSessionStore'
@@ -45,6 +46,47 @@ function Modal({ title, icon, onClose, children }: { title: string; icon: ReactN
         </div>
         {children}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Credencial de prueba para quien visita el proyecto. Solo aparece si se configuró
+ * (ver src/config/demo.config.ts); al pulsarla, se empareja la pantalla con el rol de operador.
+ */
+function DemoCredentials({ onUse, disabled }: { onUse: (key: string) => void; disabled: boolean }) {
+  if (!DEMO_CREDENTIAL) return null
+  const { role, key } = DEMO_CREDENTIAL
+  return (
+    <div className="mt-4 rounded-xl border border-cool bg-cool-soft p-3">
+      <p className="flex items-center gap-2 text-xs font-semibold text-cool-strong">
+        <GraduationCap size={15} className="shrink-0" /> Proyecto académico: entra a probarlo
+      </p>
+      <p className="mt-1 text-xs text-mute">
+        La casa y sus sensores son simulados. Entra como {ROLE_LABEL[role]} y la pantalla se empareja sola, para que puedas ver
+        cómo funciona todo el sistema.
+      </p>
+      <div className="mt-2.5">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onUse(key)}
+          title={`Emparejar como ${ROLE_LABEL[role]} (${ROLE_HELP[role]})`}
+          className="flex items-center gap-2 rounded-xl border border-line bg-panel px-3 py-2 text-sm font-semibold hover:border-cool hover:text-cool-strong disabled:opacity-50"
+        >
+          <KeyRound size={14} /> Entrar como {ROLE_LABEL[role]}
+        </button>
+      </div>
+      {VIDEO_URL && (
+        <a
+          href={VIDEO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-cool-strong hover:underline"
+        >
+          <CirclePlay size={14} /> Ver el vídeo guía del proyecto
+        </a>
+      )}
     </div>
   )
 }
@@ -139,6 +181,15 @@ function PairDialog() {
             <TriangleAlert size={14} className="mt-px shrink-0" /> {error}
           </p>
         )}
+
+        <DemoCredentials
+          disabled={pairing}
+          onUse={(k) => {
+            setKey('')
+            pair(k)
+          }}
+        />
+
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={close} className="rounded-xl px-3.5 py-2 text-sm font-semibold text-mute hover:bg-raised">
             Cancelar

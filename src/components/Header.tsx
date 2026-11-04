@@ -1,4 +1,5 @@
-import { BarChart3, Home, Thermometer, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react'
+import { BarChart3, CirclePlay, Home, Thermometer, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react'
+import { VIDEO_URL } from '../config/demo.config'
 import { fmtHour, tempInk } from '../lib/climate'
 import { fmtNumber } from '../lib/format'
 import { telemetry } from '../services/telemetry'
@@ -53,6 +54,20 @@ export function Header() {
           <BarChart3 size={16} />
           Analítica
         </button>
+
+        {VIDEO_URL && (
+          <a
+            href={VIDEO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Vídeo guía: recorrido por el proyecto y sus funciones (se abre en otra pestaña)"
+            className={`${chip} border-line font-semibold text-fg transition-colors hover:border-cool hover:text-cool-strong`}
+          >
+            <CirclePlay size={16} />
+            <span className="hidden lg:inline">Vídeo guía</span>
+          </a>
+        )}
+
         <div className={`${chip} border-line`}>
           <Thermometer size={16} style={{ color: tempInk(world.outdoorTemp) }} />
           <span className="font-semibold">{fmtNumber(world.outdoorTemp, 1)}° exterior</span>
