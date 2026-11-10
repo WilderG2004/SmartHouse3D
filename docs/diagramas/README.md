@@ -8,6 +8,7 @@
 |---|---|
 | `influxdb-estructura.mmd` | **La estructura logica de almacenamiento en InfluxDB**: motor, organizacion, los dos buckets, las 14 mediciones con sus tags y fields, y que es comun a todo punto. Es el diagrama principal del modelo de datos. |
 | `influxdb-flujo.mmd` | El recorrido del dato: Node-RED lo genera, lo firma y lo valida, lo escribe en InfluxDB, y la interfaz lo recupera por la API REST con consultas Flux. |
+| `png/` | Los dos diagramas ya renderizados, con fondo blanco y al doble de resolucion, para pegarlos en una presentacion o en el documento. Se regeneran con el comando de mas abajo; si cambias un `.mmd`, vuelve a generarlos. |
 
 Los dos estan explicados, con los diagramas incrustados y una tabla por medicion, en [`docs/modelo-datos-influxdb.md`](../modelo-datos-influxdb.md).
 
