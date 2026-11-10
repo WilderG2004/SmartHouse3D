@@ -1,0 +1,39 @@
+@startuml despliegue
+title SmartHouse3D · Despliegue
+
+skinparam backgroundColor White
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 15
+skinparam roundcorner 10
+skinparam ArrowColor #334155
+skinparam ArrowFontSize 13
+skinparam nodesep 60
+skinparam ranksep 70
+skinparam node {
+  BackgroundColor #F8FAFC
+  BorderColor #475569
+}
+skinparam cloud {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+}
+skinparam database {
+  BackgroundColor #DBEAFE
+  BorderColor #1D4ED8
+}
+
+left to right direction
+
+node "Navegador" as nav
+cloud "Vercel\nReact" as vercel
+cloud "Render\nNode-RED" as render
+database "InfluxDB Cloud" as influx
+
+vercel --> nav : "interfaz web"
+nav --> render : "WebSocket"
+nav --> render : "API historial"
+render --> influx : "guarda"
+influx --> render : "consulta"
+
+@enduml

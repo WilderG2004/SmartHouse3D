@@ -1,0 +1,54 @@
+@startuml componentes
+title SmartHouse3D · Componentes
+
+skinparam backgroundColor White
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 15
+skinparam roundcorner 10
+skinparam ArrowColor #334155
+skinparam ArrowFontSize 13
+skinparam nodesep 55
+skinparam ranksep 65
+skinparam package {
+  BackgroundColor #F8FAFC
+  BorderColor #475569
+}
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #94A3B8
+}
+skinparam database {
+  BackgroundColor #DBEAFE
+  BorderColor #1D4ED8
+}
+
+package "Interfaz · React" as ui {
+  component "Pantalla" as pantalla
+  component "Casa 3D" as escena
+  component "Estado" as estado
+  component "Adaptador" as adapter
+}
+
+package "Node-RED" as nr {
+  component "Sesión" as sesion
+  component "Simulación" as simul
+  component "Validación" as valida
+  component "API historial" as api
+}
+
+database "InfluxDB" as influx
+
+pantalla --> adapter : "órdenes"
+adapter --> sesion
+sesion --> simul
+simul --> valida
+valida --> influx : "guarda"
+simul --> adapter : "telemetría"
+adapter --> estado
+estado --> pantalla
+estado --> escena
+influx --> api : "consulta"
+api --> pantalla : "gráficas"
+
+@enduml
