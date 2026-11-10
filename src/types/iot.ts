@@ -118,6 +118,8 @@ export interface PipelineApi {
   lastMs?: number | null
   lastAt?: number | null
   lastPoints?: number | null
+  lastError?: string | null
+  lastErrorAt?: number | null
 }
 export interface PipelineState {
   writes?: PipelineWrites

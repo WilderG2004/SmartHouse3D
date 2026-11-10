@@ -107,7 +107,7 @@ const S = {
   alerts: {},                         // alertas activas: id → { level, message, since }
   // Transparencia del pipeline: lo que Node-RED ha guardado, verificado y servido de verdad
   pipe: { batches: 0, points: 0, lastBatchAt: null, errors: 0, lastError: null, lastErrorAt: null, store: null,
-          api: { requests: 0, errors: 0, lastRoute: null, lastMs: null, lastAt: null, lastPoints: null } },
+          api: { requests: 0, errors: 0, lastRoute: null, lastMs: null, lastAt: null, lastPoints: null, lastError: null, lastErrorAt: null } },
 };
 
 for (const l of cfg.LIGHTS) {

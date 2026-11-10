@@ -135,9 +135,12 @@ export function PipelineStatus() {
   const ver: Level = !store ? 'idle' : !store.ok ? 'error' : store.checkedAt && now - store.checkedAt < 20_000 ? 'ok' : 'warn'
   const verLabel = !store ? 'verificando' : !store.ok ? 'no responde' : ver === 'ok' ? 'confirmado' : 'desactualizado'
 
-  /* 4 · API → interfaz */
-  const apiLevel: Level = !api || api.requests === 0 ? 'idle' : api.errors > 0 && api.lastAt && now - api.lastAt < 20_000 && api.requests === 0 ? 'error' : 'ok'
-  const apiLabel = !api || api.requests === 0 ? 'sin consultas' : 'sirviendo'
+  /* 4 · API → interfaz
+     En reposo mientras nadie pida historial (hay que emparejar la pantalla y elegir 15 min, 1 h o 24 h).
+     Se pone en rojo si una consulta falló hace poco, igual que la tarjeta 2 con las escrituras. */
+  const apiErrRecent = !!api?.lastErrorAt && now - api.lastErrorAt < 20_000
+  const apiLevel: Level = !api || (api.requests === 0 && api.errors === 0) ? 'idle' : apiErrRecent ? 'error' : api.requests > 0 ? 'ok' : 'warn'
+  const apiLabel = apiLevel === 'idle' ? 'sin consultas' : apiLevel === 'error' ? 'con errores' : apiLevel === 'ok' ? 'sirviendo' : 'sin respuesta'
 
   return (
     <section className="card p-5" aria-label="Pipeline IoT">
@@ -204,12 +207,21 @@ export function PipelineStatus() {
           label={apiLabel}
           last
           lines={
-            api && api.requests > 0
+            api && (api.requests > 0 || api.errors > 0)
               ? [
                   <>
                     <b className="font-semibold text-fg">{fmtNumber(api.requests)}</b> consultas del historial atendidas
                   </>,
-                  `Última: ${api.lastRoute ?? '—'} · ${api.lastMs ?? '—'} ms · ${api.lastPoints ?? '—'} puntos ${ago(api.lastAt, now)}`,
+                  ...(api.requests > 0
+                    ? [`Última: ${api.lastRoute ?? '—'} · ${api.lastMs ?? '—'} ms · ${api.lastPoints ?? '—'} puntos ${ago(api.lastAt, now)}`]
+                    : []),
+                  ...(api.errors > 0
+                    ? [
+                        <span key="e" className="text-bad-strong">
+                          {api.errors} error(es){api.lastError ? `: ${api.lastError}` : ''} {ago(api.lastErrorAt, now)}
+                        </span>,
+                      ]
+                    : []),
                 ]
               : ['Aún sin consultas: elige 15 min, 1 h o 24 h en las gráficas y se leerá de InfluxDB.']
           }

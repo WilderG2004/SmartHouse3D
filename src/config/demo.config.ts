@@ -33,7 +33,7 @@
 import type { SessionRole } from '../types/iot'
 
 /** Vídeo guía del proyecto. No es un secreto: es un enlace público. */
-export const VIDEO_URL = import.meta.env.VITE_VIDEO_URL ?? 'https://youtu.be/J3dBYM0y5j0'
+export const VIDEO_URL = import.meta.env.VITE_VIDEO_URL ?? 'https://youtu.be/HwWKnQCCw0o'
 
 export interface DemoCredential {
   role: Extract<SessionRole, 'operador'>
