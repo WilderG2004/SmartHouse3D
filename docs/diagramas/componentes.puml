@@ -1,15 +1,18 @@
 @startuml componentes
-title SmartHouse3D · Componentes
+title SmartHouse3D · Diagrama de componentes
+
+left to right direction
 
 skinparam backgroundColor White
 skinparam shadowing false
 skinparam defaultFontName Helvetica
 skinparam defaultFontSize 15
-skinparam roundcorner 10
+skinparam roundcorner 8
+skinparam componentStyle uml2
 skinparam ArrowColor #334155
 skinparam ArrowFontSize 13
-skinparam nodesep 55
-skinparam ranksep 65
+skinparam nodesep 40
+skinparam ranksep 55
 skinparam package {
   BackgroundColor #F8FAFC
   BorderColor #475569
@@ -18,37 +21,48 @@ skinparam component {
   BackgroundColor #FFFFFF
   BorderColor #94A3B8
 }
+skinparam interface {
+  BackgroundColor #D1FAE5
+  BorderColor #047857
+}
 skinparam database {
   BackgroundColor #DBEAFE
   BorderColor #1D4ED8
 }
 
-package "Interfaz · React" as ui {
+package "Interfaz web" {
   component "Pantalla" as pantalla
-  component "Casa 3D" as escena
+  component "Casa 3D" as casa
   component "Estado" as estado
-  component "Adaptador" as adapter
+  component "Adaptador" as adaptador
+  interface "TelemetryAdapter" as ITel
+
+  adaptador -up- ITel
+  pantalla ..> ITel
+  adaptador --> estado
+  estado --> pantalla
+  estado --> casa
 }
 
-package "Node-RED" as nr {
+package "Node-RED" {
   component "Sesión" as sesion
   component "Simulación" as simul
   component "Validación" as valida
   component "API historial" as api
+  interface "/ws/casa-iot" as IWs
+  interface "/api/history" as IHist
+
+  sesion -up- IWs
+  api -up- IHist
+  sesion --> simul
+  simul --> valida
 }
 
 database "InfluxDB" as influx
 
-pantalla --> adapter : "órdenes"
-adapter --> sesion
-sesion --> simul
-simul --> valida
-valida --> influx : "guarda"
-simul --> adapter : "telemetría"
-adapter --> estado
-estado --> pantalla
-estado --> escena
-influx --> api : "consulta"
-api --> pantalla : "gráficas"
+adaptador ..> IWs : "órdenes y telemetría"
+pantalla ..> IHist : "gráficas"
+valida ..> influx : "guarda"
+api ..> influx : "consulta"
 
 @enduml
