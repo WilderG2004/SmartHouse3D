@@ -1,0 +1,93 @@
+@startuml componentes-1b-interfaz-datos
+' SmartHouse3D - Diagrama de componentes, parte 1b de 4: LA INTERFAZ, de donde salen los datos
+' Fuentes: src/hooks/, src/services/telemetry/, src/services/history/, src/config/
+title SmartHouse3D · Componentes (1b de 4) · Interfaz: hooks, servicios y configuración
+
+skinparam backgroundColor White
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam ArrowFontSize 11
+skinparam package {
+  BackgroundColor #F8FAFC
+  BorderColor #475569
+}
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #94A3B8
+}
+skinparam interface {
+  BackgroundColor #D1FAE5
+  BorderColor #047857
+}
+
+package "Hooks · src/hooks" as hooks {
+  component "useTelemetry\nconecta, envía órdenes\ny aplica lo que llega" as usetel
+  component "useHistory\npide 15 min, 1 h o 24 h" as usehist
+  component "useLive\nserie en vivo para las gráficas" as uselive
+  component "useCan\n¿este rol puede esta acción?" as usecan
+  component "useAlarmSound\nsirena y aviso por voz" as usesound
+}
+
+package "Servicios · src/services" as serv {
+  interface "TelemetryAdapter\ncontrato: conectar, enviar, recibir" as adapter
+  component "WebSocketAdapter\nNode-RED · por defecto" as ws
+  component "SimulatedAdapter\nsolo desarrollo sin Node-RED" as sim
+  component "pairingKey\nclave de la pestaña\nen sessionStorage" as pkey
+  component "historyApi\nGET /api/history/power,\n/smoke y /climate" as histapi
+}
+
+package "Configuración · src/config" as conf {
+  component "house.config.ts\nhabitaciones, luces, puertas,\nsensores, aires y enchufes" as houseconf
+  component "security.config.ts\nCOPIA de la tabla de permisos" as secconf
+  component "demo.config.ts\nvídeo guía y credencial\nde demostración" as democonf
+}
+
+package "Estado · Zustand" as estado {
+  component "useHouseStore" as housestore
+  component "useSessionStore" as sessionstore
+}
+
+usetel --> adapter : "usa"
+usetel --> housestore : "aplica los mensajes"
+usetel --> sessionstore : "rol y confirmaciones"
+uselive --> housestore
+usesound --> housestore
+usehist --> histapi
+usecan --> secconf
+usecan --> sessionstore
+
+adapter <|.. ws : "implementa"
+adapter <|.. sim : "implementa"
+ws --> pkey : "clave con la que\nse emparejó"
+histapi --> pkey : "Authorization: Bearer"
+
+ws ..> houseconf
+sim ..> houseconf
+usetel ..> democonf
+
+note bottom of serv
+  **Patrón adaptador.** La interfaz no sabe de dónde
+  vienen los datos: solo conoce TelemetryAdapter.
+  Pasar de Node-RED a simulado cambia la
+  implementación, no la pantalla.
+  VITE_TELEMETRY_MODE=simulated es solo para
+  desarrollar sin Node-RED, y la interfaz lo avisa.
+end note
+
+note bottom of conf
+  security.config.ts es una COPIA, y solo sirve para
+  dejar un botón apagado. **La validación de verdad
+  vive en Node-RED:** una orden que la pantalla
+  dejara pasar se rechaza igual en el servidor.
+end note
+
+note right of pkey
+  La clave vive solo en la pestaña
+  (sessionStorage) y únicamente después
+  de que el servidor la acepta.
+end note
+
+@enduml
