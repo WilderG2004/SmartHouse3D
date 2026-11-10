@@ -1,0 +1,53 @@
+---
+config:
+  flowchart:
+    nodeSpacing: 30
+    rankSpacing: 75
+    padding: 10
+title: SmartHouse3D - recorrido del dato hasta InfluxDB y de vuelta a la pantalla
+---
+flowchart LR
+  %% =====================================================================
+  %%  Camino real del dato. Fuentes:
+  %%    infra/nodered/src/95-persistir.js, 96-eventos-influx.js  generacion
+  %%    infra/nodered/src/86-firmar-telemetria.js                firma HMAC
+  %%    infra/nodered/src/87-validar-telemetria.js               unica puerta de entrada
+  %%    infra/nodered/src/98-hist-power.js, 98-hist-smoke.js, 98-hist-clima.js  consultas Flux
+  %%    infra/nodered/tools/build-flows.mts                      cableado de los nodos
+  %% =====================================================================
+
+  subgraph NR["<b>Node-RED</b> &middot; genera y valida"]
+    direction TB
+    GEN["Simulacion de la casa<br/>sensores y equipos"]
+    PERS["Preparar lecturas<br/>95-persistir.js &middot; lote cada 2 s"]
+    EV["Guardar cambios y eventos<br/>96-eventos-influx.js"]
+    FIRMA["Firmar telemetria<br/>86-firmar-telemetria.js<br/>HMAC-SHA256 por dispositivo"]
+    VAL["Validar telemetria<br/>87-validar-telemetria.js<br/>firma, ventana, secuencia,<br/>esquema, rangos, anomalias"]
+    GEN --> PERS --> FIRMA
+    GEN --> EV --> FIRMA
+    FIRMA --> VAL
+  end
+
+  ING["POST /api/ingest<br/>dispositivo externo firmado<br/>desactivado por defecto"] --> VAL
+
+  VAL -->|puntos aceptados| BD[("<b>Bucket de datos</b><br/>casa_iot &middot; Casa_IoT")]
+  VAL -->|huella por bloque de 5 min| BI[("<b>Bucket de huellas</b><br/>casa_iot_integridad")]
+  VAL -->|rechazos y cuarentena| AUDN["Auditoria<br/>08-auditar.js"]
+  AUDN -->|audit, quarantine| BD
+
+  BD --> FLUX["Consultar InfluxDB<br/>lenguaje Flux<br/>token de solo lectura"]
+
+  FLUX --> API["<b>API REST de Node-RED</b><br/>GET /api/history/power<br/>GET /api/history/smoke<br/>GET /api/history/climate<br/>exigen Authorization: Bearer"]
+  FLUX --> MON["Monitor del pipeline<br/>cada 5 s cuenta lo guardado"]
+
+  API --> UI["<b>Interfaz web</b> &middot; React<br/>panel de Analitica y graficas"]
+  MON -->|WebSocket| UI
+  BD -.->|verificacion offline| VERIF["npm run seguridad:integridad<br/>recalcula la cadena de huellas"]
+  BI -.-> VERIF
+
+  classDef nr fill:#d1fae5,stroke:#047857,color:#064e3b
+  classDef db fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#1e3a8a
+  classDef app fill:#ffffff,stroke:#94a3b8,color:#0f172a
+  class GEN,PERS,EV,FIRMA,VAL,AUDN nr
+  class BD,BI,FLUX db
+  class API,UI,MON,ING,VERIF app

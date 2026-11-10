@@ -1,12 +1,14 @@
 # `docs/` - documentacion
 
-**En una frase:** aqui esta la imagen del flujo de Node-RED, el indice de toda la documentacion y un diccionario con los terminos tecnicos explicados facil.
+**En una frase:** aqui esta la imagen del flujo de Node-RED, el modelo de datos de InfluxDB, el indice de toda la documentacion y un diccionario con los terminos tecnicos explicados facil.
 
 ## Que archivo hay aqui?
 
 | Archivo | Que es |
 |---|---|
 | `flujo-node-red.png` | Una imagen del flujo de Node-RED tal como lo veras en el editor (`http://localhost:1880`). Tiene 6 secciones (A a F) y numeradas del 1 al 5 las cajas que si necesitan configuracion. |
+| `modelo-datos-influxdb.md` | **El modelo de datos**: como se organiza lo que se guarda en InfluxDB (buckets, mediciones, tags, fields y marca de tiempo), con los dos diagramas incrustados, una tabla por medicion y las consultas Flux que usa la API. |
+| `diagramas/` | Los diagramas en Mermaid (`.mmd`): `influxdb-estructura.mmd` (estructura de almacenamiento) e `influxdb-flujo.mmd` (recorrido del dato). Ver `diagramas/README.md`. |
 | `seguridad-iot.md` | **El informe de seguridad IoT**: hallazgos del proyecto original (con archivo y linea), plan por fases, diagrama del flujo de datos con los controles de cada tramo, tabla de capacidades por rol, evidencia de las pruebas de rechazo y limites honestos. |
 | `evidencia/` | Resultados guardados de las pruebas: `seg_final.json` (48 pruebas de rechazo contra Node-RED) y `resultado_ui.json` (30 comprobaciones de la interfaz en un navegador). No contienen claves. |
 
@@ -18,6 +20,7 @@
 | Que hace cada archivo de la pantalla | `src/README.md` y los README de sus subcarpetas |
 | Que hace cada pieza ("nodo") de Node-RED | `infra/nodered/src/README.md` |
 | Como se arma el flujo de Node-RED | `infra/nodered/tools/README.md` |
+| Como se guardan los datos en InfluxDB (buckets, mediciones, tags, fields) | `docs/modelo-datos-influxdb.md` |
 | Los instaladores y Docker | `infra/README.md` |
 | La seguridad en una pagina: que protege, como comprobarlo y los cuidados | `README.md` principal, seccion **"Seguridad IoT"** |
 | La seguridad del canal en detalle (hallazgos, roles, firmas, TLS, secretos, limites) y como probarla | `docs/seguridad-iot.md` |

@@ -1,0 +1,70 @@
+---
+config:
+  flowchart:
+    nodeSpacing: 30
+    rankSpacing: 75
+    padding: 10
+title: SmartHouse3D - estructura logica de almacenamiento en InfluxDB 2.x
+---
+flowchart LR
+  %% =====================================================================
+  %%  Estructura REAL leida del codigo. Fuentes:
+  %%    infra/nodered/tools/build-flows.mts         org y buckets
+  %%    infra/nodered/src/95-persistir.js           mediciones periodicas
+  %%    infra/nodered/src/96-eventos-influx.js      mediciones por evento
+  %%    infra/nodered/src/08-auditar.js             audit y quarantine
+  %%    infra/nodered/src/87-validar-telemetria.js  integrity
+  %%    infra/nodered/tools/security-policy.mts     tags y fields permitidos
+  %%    infra/aplicar-retencion.mjs                 retencion de cada bucket
+  %% =====================================================================
+
+  MOTOR["<b>InfluxDB 2.x</b><br/>base de datos de series temporales"]
+  ORG["<b>Organizacion</b><br/>INFLUX_ORG"]
+
+  BD["<b>Bucket de datos</b><br/>casa_iot &middot; en produccion Casa_IoT<br/>retencion 30 dias"]
+  BI["<b>Bucket de huellas</b><br/>casa_iot_integridad<br/>retencion 90 dias"]
+
+  G1["<b>Periodicas</b><br/>un lote cada 2 s"]
+  G2["<b>Por cambio de estado</b><br/>en el instante en que ocurre"]
+  G3["<b>Seguridad</b><br/>cada rechazo o anomalia"]
+
+  MOTOR --> ORG
+  ORG --> BD
+  ORG --> BI
+  BD --> G1
+  BD --> G2
+  BD --> G3
+  BI --> INTEG
+
+  G1 --> POWER["<b>power</b><br/><i>tags:</i> meter<br/><i>fields:</i> watts, kwh, base, lights, ac, plugs"]
+  G1 --> ENV["<b>env</b><br/><i>tags:</i> room, sensor<br/><i>fields:</i> temperature, humidity, lux"]
+  G1 --> SMOKE["<b>smoke</b><br/><i>tags:</i> sensor<br/><i>fields:</i> ppm, alarm, simulating"]
+  G1 --> AC["<b>ac</b><br/><i>tags:</i> id, room<br/><i>fields:</i> on, mode, setpoint, running, watts"]
+  G1 --> PLUG["<b>plug</b><br/><i>tags:</i> id, room<br/><i>fields:</i> on, watts, kwh"]
+
+  G2 --> LIGHT["<b>light</b><br/><i>tags:</i> id<br/><i>fields:</i> on, intensity, color"]
+  G2 --> DOOR["<b>door</b><br/><i>tags:</i> id<br/><i>fields:</i> open"]
+  G2 --> PIR["<b>pir</b><br/><i>tags:</i> id<br/><i>fields:</i> motion"]
+  G2 --> SEC["<b>security</b><br/><i>tags:</i> sin etiquetas<br/><i>fields:</i> mode, alarm, cause"]
+  G2 --> ALERTS["<b>alerts</b><br/><i>tags:</i> id, level<br/><i>fields:</i> active, message"]
+  G2 --> EVENTS["<b>events</b><br/><i>tags:</i> level, source<br/><i>fields:</i> message, id"]
+
+  G3 --> AUDIT["<b>audit</b><br/><i>tags:</i> result, reason, kind, role<br/><i>fields:</i> id, session, count, user, confirmed"]
+  G3 --> QUAR["<b>quarantine</b><br/><i>tags:</i> dev, measurement, reason<br/><i>fields:</i> summary"]
+
+  INTEG["<b>integrity</b><br/><i>tags:</i> chain<br/><i>fields:</i> block_start, block_ms, count, hash, prev, genesis"]
+
+  TS["<b>Comun a todo punto</b><br/>serie = measurement + juego de tags<br/>instante = _time, con precision de milisegundos<br/>un solo punto por serie e instante: el ultimo sobrescribe<br/>etiqueta extra via=ingest si entro por POST /api/ingest"]
+  BD -.-> TS
+  BI -.-> TS
+
+  classDef motor fill:#d1fae5,stroke:#047857,stroke-width:2px,color:#064e3b
+  classDef bucket fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#1e3a8a
+  classDef grupo fill:#f1f5f9,stroke:#475569,color:#0f172a
+  classDef med fill:#ffffff,stroke:#94a3b8,color:#0f172a
+  classDef nota fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
+  class MOTOR,ORG motor
+  class BD,BI bucket
+  class G1,G2,G3 grupo
+  class POWER,ENV,SMOKE,AC,PLUG,LIGHT,DOOR,PIR,SEC,ALERTS,EVENTS,AUDIT,QUAR,INTEG med
+  class TS nota
