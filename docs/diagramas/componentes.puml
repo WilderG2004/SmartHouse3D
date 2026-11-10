@@ -52,6 +52,7 @@ package "Node-RED" {
   component "Seguridad" as seg
   component "Simulación" as simul
   component "Alertas" as alertas
+  component "Filtro de privacidad" as filtro
   component "Preparar puntos" as prepara
   component "Firma y validación" as valida
   component "Auditoría" as audit
@@ -60,11 +61,16 @@ package "Node-RED" {
   interface "/api/history" as IHist
 
   auth -up- IWs
+  filtro -up- IWs
   api -up- IHist
   auth --> ordenes
   auth --> seg
   auth --> audit : "rechazos"
   simul --> alertas
+  ordenes --> filtro
+  seg --> filtro
+  simul --> filtro
+  alertas --> filtro
   ordenes --> prepara
   seg --> prepara
   simul --> prepara
@@ -76,7 +82,7 @@ package "Node-RED" {
 database "Bucket de datos" as bdatos
 database "Bucket de huellas" as bhuellas
 
-adaptador ..> IWs : "órdenes y telemetría"
+adaptador ..> IWs : "envía órdenes\nrecibe telemetría"
 graficas ..> IHist : "15 min · 1 h · 24 h"
 valida ..> bdatos : "puntos"
 valida ..> bhuellas : "huellas"
