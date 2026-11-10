@@ -1,17 +1,15 @@
 @startuml componentes
 title SmartHouse3D · Diagrama de componentes
 
-left to right direction
-
 skinparam backgroundColor White
 skinparam shadowing false
 skinparam defaultFontName Helvetica
-skinparam defaultFontSize 15
+skinparam defaultFontSize 14
 skinparam roundcorner 8
 skinparam componentStyle uml2
 skinparam ArrowColor #334155
-skinparam ArrowFontSize 13
-skinparam nodesep 40
+skinparam ArrowFontSize 12
+skinparam nodesep 35
 skinparam ranksep 55
 skinparam package {
   BackgroundColor #F8FAFC
@@ -30,39 +28,59 @@ skinparam database {
   BorderColor #1D4ED8
 }
 
-package "Interfaz web" {
-  component "Pantalla" as pantalla
+package "Interfaz web · React" {
+  component "Panel de control" as panel
+  component "Gráficas" as graficas
   component "Casa 3D" as casa
+  component "Emparejamiento" as empareja
   component "Estado" as estado
   component "Adaptador" as adaptador
   interface "TelemetryAdapter" as ITel
 
   adaptador -up- ITel
-  pantalla ..> ITel
+  panel ..> ITel
+  empareja ..> ITel
   adaptador --> estado
-  estado --> pantalla
+  estado --> panel
+  estado --> graficas
   estado --> casa
 }
 
 package "Node-RED" {
-  component "Sesión" as sesion
+  component "Autorizar sesión" as auth
+  component "Órdenes" as ordenes
+  component "Seguridad" as seg
   component "Simulación" as simul
-  component "Validación" as valida
+  component "Alertas" as alertas
+  component "Preparar puntos" as prepara
+  component "Firma y validación" as valida
+  component "Auditoría" as audit
   component "API historial" as api
   interface "/ws/casa-iot" as IWs
   interface "/api/history" as IHist
 
-  sesion -up- IWs
+  auth -up- IWs
   api -up- IHist
-  sesion --> simul
-  simul --> valida
+  auth --> ordenes
+  auth --> seg
+  auth --> audit : "rechazos"
+  simul --> alertas
+  ordenes --> prepara
+  seg --> prepara
+  simul --> prepara
+  alertas --> prepara
+  prepara --> valida
+  valida --> audit : "cuarentena"
 }
 
-database "InfluxDB" as influx
+database "Bucket de datos" as bdatos
+database "Bucket de huellas" as bhuellas
 
 adaptador ..> IWs : "órdenes y telemetría"
-pantalla ..> IHist : "gráficas"
-valida ..> influx : "guarda"
-api ..> influx : "consulta"
+graficas ..> IHist : "15 min · 1 h · 24 h"
+valida ..> bdatos : "puntos"
+valida ..> bhuellas : "huellas"
+audit ..> bdatos : "auditoría"
+api ..> bdatos : "consulta Flux"
 
 @enduml
