@@ -35,7 +35,7 @@ package "Interfaz web · React" {
   component "Emparejamiento" as empareja
   component "Estado" as estado
   component "Adaptador" as adaptador
-  interface "TelemetryAdapter" as ITel
+  interface "Adaptador de telemetría" as ITel
 
   adaptador -up- ITel
   panel ..> ITel

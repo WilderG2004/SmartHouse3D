@@ -1,4 +1,6 @@
 @startuml clases
+' Los nombres se muestran en español; el alias de cada clase es el nombre real
+' que tiene en el código (src/types/iot.ts y src/services/telemetry/).
 title SmartHouse3D · Diagrama de clases
 
 skinparam backgroundColor White
@@ -20,40 +22,40 @@ skinparam class {
 }
 
 package "Canal de datos" {
-  interface TelemetryAdapter {
-    +mode : simulated | websocket
-    +enforcesSessions : boolean
-    +secureTransport : boolean
-    +connect()
-    +disconnect()
-    +subscribe(listener) : unsubscribe
-    +send(cmd : DeviceCommand)
-    +pair(key : string)
-    +unpair()
-    +confirm(code : string)
-    +revokeOthers()
+  interface "Adaptador de telemetría" as TelemetryAdapter {
+    +origen : simulado | WebSocket
+    +mandaElServidor : lógico
+    +canalCifrado : lógico
+    +conectar()
+    +desconectar()
+    +suscribir(oyente) : cancelar
+    +enviar(orden : Orden)
+    +emparejar(clave : texto)
+    +desemparejar()
+    +confirmar(código : texto)
+    +revocarOtrasSesiones()
   }
 
-  abstract class BaseAdapter {
-    -listeners : Set<Listener>
-    +subscribe(listener) : unsubscribe
-    #emit(msg)
+  abstract class "Adaptador base" as BaseAdapter {
+    -oyentes : conjunto
+    +suscribir(oyente) : cancelar
+    #emitir(mensaje)
   }
 
-  class WebSocketAdapter {
-    +mode = websocket
-    -ws : WebSocket
-    -retry : number
-    -pendingKey : string
-    +connect()
-    +send(cmd)
-    -normalize(raw)
+  class "Adaptador WebSocket" as WebSocketAdapter {
+    +origen = WebSocket
+    -conexión : WebSocket
+    -reintentos : número
+    -clavePendiente : texto
+    +conectar()
+    +enviar(orden)
+    -normalizar(crudo)
   }
 
-  class SimulatedAdapter {
-    +mode = simulated
-    +connect()
-    +send(cmd)
+  class "Adaptador simulado" as SimulatedAdapter {
+    +origen = simulado
+    +conectar()
+    +enviar(orden)
   }
 
   BaseAdapter ..|> TelemetryAdapter
@@ -62,27 +64,27 @@ package "Canal de datos" {
 }
 
 package "Contrato de mensajes" {
-  class TelemetryMessage <<union>> {
-    snapshot · light · smoke · pir
-    door · power · climate · ac
-    plug · security · alert · event
-    pipeline · connection
+  class "Mensaje de telemetría" as TelemetryMessage <<unión>> {
+    foto · luz · humo · movimiento
+    puerta · consumo · clima · aire
+    enchufe · seguridad · alerta
+    evento · tubería · conexión
   }
 
-  class DeviceCommand <<union>> {
-    light.set · door.set · ac.set
-    plug.set · security.set
-    scene.apply · world.setHour
-    smoke.simulate · pir.simulate
+  class "Orden" as DeviceCommand <<unión>> {
+    encender luz · abrir puerta
+    ajustar aire · encender enchufe
+    armar alarma · aplicar escena
+    cambiar la hora · simular humo
   }
 
-  class SessionMessage <<union>> {
-    session : rol vigente
-    confirm : código de un solo uso
-    reject : motivo del rechazo
+  class "Mensaje de sesión" as SessionMessage <<unión>> {
+    sesión : rol vigente
+    confirmar : código de un solo uso
+    rechazo : motivo
   }
 
-  enum SessionRole {
+  enum "Rol de sesión" as SessionRole {
     lector
     operador
     administrador
@@ -90,98 +92,98 @@ package "Contrato de mensajes" {
 }
 
 package "Estado de la casa" {
-  class HouseSnapshot {
-    +restricted : boolean
-    +pir : Record<id, PirState>
-    +power : PowerState
-    +world : WorldState
-    +events : SystemEvent[]
+  class "Estado de la casa" as HouseSnapshot {
+    +vistaReducida : lógico
+    +movimiento : por sensor
+    +consumo : vatios y kWh
+    +mundo : hora y temperatura exterior
+    +eventos : lista
   }
 
-  class LightState {
-    +id : string
-    +on : boolean
-    +intensity : number
-    +color : string
+  class "Luz" as LightState {
+    +id : texto
+    +encendida : lógico
+    +intensidad : número
+    +color : texto
   }
 
-  class DoorState {
-    +open : boolean
+  class "Puerta" as DoorState {
+    +abierta : lógico
   }
 
-  class AcState {
-    +id : string
-    +on : boolean
-    +mode : cool | fan
-    +setpoint : number
-    +running : boolean
-    +watts : number
+  class "Aire acondicionado" as AcState {
+    +id : texto
+    +encendido : lógico
+    +modo : frío | ventilador
+    +consigna : número
+    +compresor : lógico
+    +vatios : número
   }
 
-  class PlugState {
-    +id : string
-    +on : boolean
-    +watts : number
-    +kwh : number
+  class "Enchufe" as PlugState {
+    +id : texto
+    +encendido : lógico
+    +vatios : número
+    +kWh : número
   }
 
-  class RoomClimate {
-    +temperature : number
-    +humidity : number
-    +lux : number
+  class "Clima de habitación" as RoomClimate {
+    +temperatura : número
+    +humedad : número
+    +luminosidad : número
   }
 
-  class SmokeState {
-    +ppm : number
-    +alarm : boolean
-    +simulating : boolean
+  class "Sensor de humo" as SmokeState {
+    +ppm : número
+    +alarma : lógico
+    +simulando : lógico
   }
 
-  class SecurityState {
-    +mode : SecurityMode
-    +alarm : boolean
-    +cause : string
+  class "Seguridad" as SecurityState {
+    +modo : Modo de alarma
+    +alarma : lógico
+    +causa : texto
   }
 
-  enum SecurityMode {
-    disarmed
-    home
-    away
+  enum "Modo de alarma" as SecurityMode {
+    desarmada
+    en casa
+    fuera de casa
   }
 
-  HouseSnapshot *-- "0..*" LightState : lights
-  HouseSnapshot *-- "0..*" DoorState : doors
-  HouseSnapshot *-- "0..*" AcState : acs
-  HouseSnapshot *-- "0..*" PlugState : plugs
-  HouseSnapshot *-- "0..*" RoomClimate : climate
-  HouseSnapshot *-- "1" SmokeState : smoke
-  HouseSnapshot *-- "0..1" SecurityState : security
+  HouseSnapshot *-- "0..*" LightState : luces
+  HouseSnapshot *-- "0..*" DoorState : puertas
+  HouseSnapshot *-- "0..*" AcState : aires
+  HouseSnapshot *-- "0..*" PlugState : enchufes
+  HouseSnapshot *-- "0..*" RoomClimate : clima
+  HouseSnapshot *-- "1" SmokeState : humo
+  HouseSnapshot *-- "0..1" SecurityState : seguridad
   SecurityState --> SecurityMode
 }
 
 package "Estado en la interfaz" {
-  class HouseStore {
-    +connection : ConnectionStatus
-    +restricted : boolean
-    +apply(msg : TelemetryMessage)
-    +seedHistory(seed)
+  class "Almacén de la casa" as HouseStore {
+    +conexión : estado del enlace
+    +vistaReducida : lógico
+    +aplicar(mensaje de telemetría)
+    +sembrarHistorial(datos)
   }
 
-  class SessionStore {
-    +role : SessionRole
-    +user : string
-    +pair(key : string)
-    +logout()
-    +handle(msg : SessionMessage)
+  class "Almacén de sesión" as SessionStore {
+    +rol : Rol de sesión
+    +usuario : texto
+    +emparejar(clave : texto)
+    +cerrarSesión()
+    +atender(mensaje de sesión)
   }
 }
 
 TelemetryAdapter ..> DeviceCommand : "envía"
 TelemetryAdapter ..> TelemetryMessage : "recibe"
 TelemetryAdapter ..> SessionMessage : "recibe"
-TelemetryMessage ..> HouseSnapshot : "snapshot"
-HouseStore ..> TelemetryMessage : "apply()"
-SessionStore ..> SessionMessage : "handle()"
+TelemetryMessage ..> HouseSnapshot : "foto completa"
+HouseStore ..> TelemetryMessage : "aplicar()"
+SessionStore ..> SessionMessage : "atender()"
 SessionStore --> SessionRole
 
 @enduml
