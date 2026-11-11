@@ -1,7 +1,12 @@
 @startuml componentes
-' Cableado comprobado en infra/nodered/tools/build-flows.mts (secciones A-F)
-' y en los 36 nodos de infra/nodered/src/*.js. Nombres tomados de sus cabeceras @name.
-title SmartHouse3D · Diagrama de componentes
+' El sistema PUBLICADO, el mismo que describe el diagrama de despliegue.
+' Comprobado en:
+'   infra/nodered/tools/build-flows.mts   cableado, secciones A-F
+'   infra/nodered/src/*.js                nombres reales (@name) de los 36 nodos
+'   infra/nodered/seguridad-ws.js         control del handshake, copiado a la imagen
+'   render.yaml                           CASA_INGEST=off, por eso /api/ingest no aparece
+'   src/services/telemetry/index.ts       en produccion el adaptador es el de WebSocket
+title SmartHouse3D · Diagrama de componentes (producción)
 
 skinparam backgroundColor White
 skinparam shadowing false
@@ -30,13 +35,13 @@ skinparam database {
   BorderColor #1D4ED8
 }
 
-package "Interfaz web · React" {
+package "Interfaz web · React · publicada en Vercel" {
   component "Panel de control" as panel
   component "Gráficas" as graficas
   component "Casa 3D" as casa
   component "Emparejamiento" as empareja
   component "Estado" as estado
-  component "Adaptador" as adaptador
+  component "Adaptador WebSocket" as adaptador
   interface "Adaptador de telemetría" as ITel
 
   adaptador -up- ITel
@@ -48,7 +53,8 @@ package "Interfaz web · React" {
   estado --> casa
 }
 
-package "Node-RED · flujo generado" {
+package "Node-RED en Render · flows.render.json" {
+  component "Control del handshake\norigen permitido · conexiones por IP" as handshake
   component "Autorizar sesión" as auth
   component "Enrutador por kind" as router
   component "Manejadores de órdenes\nluces · puertas · PIR · aire\nenchufes · escenas · reloj" as handlers
@@ -67,10 +73,11 @@ package "Node-RED · flujo generado" {
   interface "/ws/casa-iot" as IWs
   interface "/api/history" as IHist
 
-  auth -up- IWs
+  handshake -up- IWs
   filtro -up- IWs
   api -up- IHist
 
+  handshake --> auth : "conexiones aceptadas"
   auth --> router : "órdenes autorizadas"
   auth --> audit : "rechazos"
   router --> handlers
@@ -92,8 +99,10 @@ package "Node-RED · flujo generado" {
   monitor --> bus : "estado del pipeline"
 }
 
-database "Bucket de datos" as bdatos
-database "Bucket de huellas" as bhuellas
+package "InfluxDB Cloud · org Dev Teams" {
+  database "Casa_IoT" as bdatos
+  database "Casa_IoT_integridad" as bhuellas
+}
 
 adaptador ..> IWs : "envía órdenes\nrecibe telemetría"
 graficas ..> IHist : "15 min · 1 h · 24 h"

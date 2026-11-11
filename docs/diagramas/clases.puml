@@ -6,7 +6,7 @@
 '   src/hooks/useTelemetry.ts                   fachada «commands»
 '   src/store/useHouseStore.ts  useSessionStore.ts  useUiStore.ts
 '   src/types/iot.ts                            contrato de datos
-title SmartHouse3D · Diagrama de clases
+title SmartHouse3D · Diagrama de clases (producción)
 
 skinparam backgroundColor White
 skinparam shadowing false
@@ -26,7 +26,7 @@ skinparam class {
   BorderColor #94A3B8
 }
 
-package "Canal de datos" {
+package "Canal de datos · Interfaz publicada en Vercel" {
   interface "Adaptador de telemetría" as TelemetryAdapter {
     +origen : simulado | WebSocket
     +etiqueta : texto
@@ -50,10 +50,11 @@ package "Canal de datos" {
     #emitir(mensaje)
   }
 
-  class "Adaptador WebSocket" as WebSocketAdapter {
+  class "Adaptador WebSocket" as WebSocketAdapter <<en producción>> {
     +origen = WebSocket
     +etiqueta = Node-RED (WebSocket)
     +mandaElServidor = verdadero
+    +canalCifrado = verdadero (wss)
     -conexión : WebSocket
     -reintentos : número
     -clavePendiente : texto
@@ -62,7 +63,7 @@ package "Canal de datos" {
     -normalizar(crudo)
   }
 
-  class "Adaptador simulado" as SimulatedAdapter {
+  class "Adaptador simulado" as SimulatedAdapter <<solo desarrollo>> {
     +origen = simulado
     +etiqueta = SIMULACIÓN LOCAL
     +conectar()
@@ -83,6 +84,8 @@ package "Canal de datos" {
 
 package "Contrato de mensajes" {
   class "Mensaje de telemetría" as TelemetryMessage <<unión>> {
+    lo produce Node-RED en Render
+    ----
     foto · luz · humo · movimiento
     puerta · consumo · clima · aire
     enchufe · seguridad · alerta
