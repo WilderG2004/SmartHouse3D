@@ -1,8 +1,13 @@
 @startuml despliegue
-' Corregido contra el proyecto real:
-'   - El camino en uso es Node-RED instalado en el PC (flows.local.json) contra InfluxDB Cloud.
-'     Docker (flows.json, http://influxdb:8086) queda fuera: es opcional y no esta en marcha.
-'   - Se añade lo publicado: interfaz en Vercel y Node-RED en Render.
+' Comprobado contra el codigo:
+'   vite.config.ts            puerto 5173
+'   public/Iot_Casa.glb       modelo 3D
+'   infra/nodered/flows.local.json   Node-RED local -> InfluxDB Cloud
+'   render.yaml               servicio casa-iot-nodered, plan free, region virginia
+'   infra/nodered/Dockerfile.render  imagen nodered/node-red:5.0.8-24
+'   vercel.json               connect-src wss:// y https:// casa-iot-nodered.onrender.com
+'   build-flows.mts           WS_PATH /ws/casa-iot, API /api
+' Docker (infra/docker-compose.yml, flows.json -> http://influxdb:8086) queda fuera: es opcional.
 title SmartHouse3D · Diagrama de despliegue
 
 skinparam backgroundColor White
@@ -13,7 +18,7 @@ skinparam roundcorner 8
 skinparam ArrowColor #334155
 skinparam ArrowFontSize 11
 skinparam nodesep 40
-skinparam ranksep 60
+skinparam ranksep 65
 skinparam node {
   BackgroundColor #F8FAFC
   BorderColor #475569
@@ -30,55 +35,54 @@ skinparam database {
 node "Computador del usuario (Windows)" <<dispositivo>> {
 
   node "Navegador web\nChrome, Edge, etc." <<entorno de ejecución>> {
-    artifact "Interfaz de la casa\nReact + visor 3D" as uiLocal
+    artifact "Interfaz de la casa\nReact + visor 3D (Three.js)" as ui
   }
 
   node "Node.js" <<entorno de ejecución>> {
-    artifact "Servidor Vite\nentrega la página\ny el modelo Casa.glb" as vite
+    artifact "Servidor Vite · puerto 5173\nentrega la página\ny el modelo Iot_Casa.glb" as vite
     artifact "Instaladores\nsetup-local.mjs\nredeploy-flow.mjs" as inst
   }
 
-  node "Node-RED instalado en el PC\npuerto 1880" <<entorno de ejecución>> {
+  node "Node-RED · 127.0.0.1:1880" <<entorno de ejecución>> {
     artifact "Flujo Casa IoT\nflows.local.json\nsimula los datos, calcula\nalertas, guarda y consulta" as flujoLocal
+    artifact "settings.js endurecido\neditor con contraseña" as settingsLocal
+    artifact "infra/.env\nclaves y tokens\nignorado por Git" as envLocal
     artifact "Nodo\nnode-red-contrib-influxdb" as nodoInflux
   }
 }
 
-node "Vercel" <<servidor en la nube>> {
-  artifact "Interfaz publicada\nReact compilado con Vite" as uiProd
+node "Vercel · CDN" <<servidor en la nube>> {
+  artifact "Interfaz compilada\nReact + Vite" as vercelUi
+  artifact "vercel.json\nCSP, HSTS, X-Frame-Options" as vercelCsp
 }
 
-node "Render · región Virginia" <<servidor en la nube>> {
-  node "Contenedor Docker\nnodered/node-red:5.0.8-24" <<contenedor>> {
-    artifact "Flujo Casa IoT\nflows.render.json\neditor apagado" as flujoProd
+node "Render · región Virginia · plan free" <<servidor en la nube>> {
+  node "Contenedor Docker\nnodered/node-red:5.0.8-24 · Node 24" <<contenedor>> {
+    artifact "Flujo Casa IoT\nflows.render.json\ndentro de la imagen, solo lectura" as flujoProd
+    artifact "settings.js endurecido\neditor APAGADO" as settingsProd
+    artifact "flows_cred.json\nsolo referencias a los tokens" as credProd
   }
-}
-
-node "Navegador de un visitante" <<entorno de ejecución>> {
-  artifact "Interfaz de la casa" as uiVisitante
 }
 
 node "InfluxDB Cloud · AWS us-east-1" <<servidor en la nube>> {
   node "InfluxDB 2.x" <<entorno de ejecución>> {
-    database "Bucket Casa_IoT\nguarda 30 días" as bdatos
-    database "Bucket de huellas\nguarda 90 días" as bhuellas
+    database "Bucket de datos\nretención 30 días" as bdatos
+    database "Bucket de huellas\nretención 90 días" as bhuellas
   }
 }
 
-' ── en el equipo del usuario ──
-uiLocal --> vite : "HTTP 5173\ndescarga la página"
-uiLocal --> flujoLocal : "WebSocket 1880\ndatos en vivo y órdenes"
-uiLocal --> flujoLocal : "HTTP 1880\nhistorial"
+' ── en desarrollo, todo en el mismo equipo ──
+ui --> vite : "http://localhost:5173\npágina y modelo 3D"
+ui --> flujoLocal : "ws://localhost:1880/ws/casa-iot\nhttp://localhost:1880/api"
 inst --> flujoLocal : "HTTP 1880\ninstala el flujo"
 flujoLocal --> nodoInflux : "pasa lecturas\ny consultas"
-nodoInflux --> bdatos : "HTTPS 443\nguarda y consulta"
-nodoInflux --> bhuellas : "HTTPS 443\nhuellas"
+nodoInflux --> bdatos : "HTTPS 443 · org casa\nbucket Casa_IoT"
+nodoInflux --> bhuellas : "HTTPS 443\nbucket casa_iot_integridad"
 
-' ── publicado en internet ──
-uiVisitante --> uiProd : "HTTPS 443\ndescarga la página"
-uiVisitante --> flujoProd : "WebSocket seguro 443\ndatos en vivo y órdenes"
-uiVisitante --> flujoProd : "HTTPS 443\nhistorial"
-flujoProd --> bdatos : "HTTPS 443\nguarda y consulta"
-flujoProd --> bhuellas : "HTTPS 443\nhuellas"
+' ── publicado: el mismo navegador contra la nube ──
+ui --> vercelUi : "https://…vercel.app\npágina y modelo 3D"
+ui --> flujoProd : "wss://casa-iot-nodered.onrender.com/ws/casa-iot\nhttps://casa-iot-nodered.onrender.com/api"
+flujoProd --> bdatos : "HTTPS 443 · org Dev Teams\nbucket Casa_IoT"
+flujoProd --> bhuellas : "HTTPS 443\nbucket Casa_IoT_integridad"
 
 @enduml
