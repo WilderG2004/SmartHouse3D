@@ -181,6 +181,14 @@ package "Estado de la casa" {
     fuera de casa
   }
 
+  class "Alerta activa" as ActiveAlert {
+    +id : texto
+    +nivel : aviso | crítica
+    +mensaje : texto
+    +desde : instante
+  }
+
+  HouseSnapshot *-- "0..*" ActiveAlert : alertas
   HouseSnapshot *-- "0..*" LightState : luces
   HouseSnapshot *-- "0..*" DoorState : puertas
   HouseSnapshot *-- "0..*" AcState : aires
@@ -189,6 +197,59 @@ package "Estado de la casa" {
   HouseSnapshot *-- "1" SmokeState : humo
   HouseSnapshot *-- "0..1" SecurityState : seguridad
   SecurityState --> SecurityMode
+}
+
+package "Historial · lo que devuelve la API" {
+  class "Punto en el tiempo" as TimePoint {
+    +instante : número
+    +valor : número
+  }
+
+  class "Punto de consumo" as PowerPoint {
+    +base : número
+    +luces : número
+    +aires : número
+    +enchufes : número
+  }
+
+  class "Punto de temperatura" as ClimatePoint {
+    +exterior : número
+  }
+
+  PowerPoint --|> TimePoint
+  ClimatePoint --|> TimePoint
+}
+
+package "Transparencia del pipeline" {
+  class "Estado del pipeline" as PipelineState {
+  }
+
+  class "Escrituras" as PipelineWrites {
+    +lotes : número
+    +puntos : número
+    +últimoLote : instante
+    +errores : número
+    +últimoError : texto
+  }
+
+  class "Confirmación de InfluxDB" as PipelineStore {
+    +responde : lógico
+    +puntosEn10min : número
+    +últimoDato : instante
+    +msDeLectura : número
+  }
+
+  class "Consultas de historial" as PipelineApi {
+    +peticiones : número
+    +errores : número
+    +últimaRuta : texto
+    +msDeRespuesta : número
+    +puntosDevueltos : número
+  }
+
+  PipelineState *-- "0..1" PipelineWrites : escrituras
+  PipelineState *-- "0..1" PipelineStore : lectura
+  PipelineState *-- "0..1" PipelineApi : api
 }
 
 package "Estado en la interfaz" {
@@ -234,6 +295,9 @@ TelemetryAdapter ..> SessionMessage : "recibe"
 TelemetryMessage ..> HouseSnapshot : "foto completa"
 HouseStore ..> TelemetryMessage : "aplicar()"
 historyApi ..> HouseStore : "sembrarHistorial()"
+historyApi ..> PowerPoint : "devuelve"
+historyApi ..> ClimatePoint : "devuelve"
+HouseSnapshot *-- "0..1" PipelineState : pipeline
 SessionStore ..> SessionMessage : "atender()"
 SessionStore --> SessionRole
 
