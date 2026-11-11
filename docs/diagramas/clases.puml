@@ -76,10 +76,18 @@ package "Canal de datos · Interfaz publicada en Vercel" {
     +borrar()
   }
 
+  class "Cliente del historial" as historyApi <<módulo>> {
+    +potencia(minutos)
+    +humo(minutos)
+    +clima(habitación, minutos)
+    +semilla() : primeras gráficas
+  }
+
   BaseAdapter ..|> TelemetryAdapter
   WebSocketAdapter --|> BaseAdapter
   SimulatedAdapter --|> BaseAdapter
   WebSocketAdapter --> pairingKey : "sessionStorage"
+  historyApi --> pairingKey : "Authorization: Bearer"
 }
 
 package "Contrato de mensajes" {
@@ -225,6 +233,7 @@ TelemetryAdapter ..> TelemetryMessage : "recibe"
 TelemetryAdapter ..> SessionMessage : "recibe"
 TelemetryMessage ..> HouseSnapshot : "foto completa"
 HouseStore ..> TelemetryMessage : "aplicar()"
+historyApi ..> HouseStore : "sembrarHistorial()"
 SessionStore ..> SessionMessage : "atender()"
 SessionStore --> SessionRole
 

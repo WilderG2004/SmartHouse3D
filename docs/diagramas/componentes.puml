@@ -80,22 +80,26 @@ package "Node-RED en Render · flows.render.json" {
   handshake --> auth : "conexiones aceptadas"
   auth --> router : "órdenes autorizadas"
   auth --> audit : "rechazos"
+  auth --> bus : "rol, confirmación\ny rechazo"
   router --> handlers
   router --> seg
   handlers --> bus
   seg --> bus
   seg ..> router : "órdenes internas"
-  handlers ..> router : "escenas y temporizadores"
+  handlers ..> router : "escenas"
+  simul ..> router : "temporizadores"
   simul --> alertas
   simul --> bus
   alertas --> bus
   alertas --> prepara
+  prepara --> bus : "contadores del pipeline"
   bus --> filtro
   bus --> eventos
   prepara --> firma
   eventos --> firma
   firma --> valida
   valida --> audit : "cuarentena"
+  audit ..> router : "avisos de seguridad"
   monitor --> bus : "estado del pipeline"
 }
 
