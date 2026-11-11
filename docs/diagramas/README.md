@@ -10,7 +10,7 @@ Los de despliegue y componentes son **deliberadamente simples**: muestran el flu
 |---|---|
 | `influxdb-estructura.mmd` | **La estructura logica de almacenamiento en InfluxDB**: motor, organizacion, los dos buckets, las 14 mediciones con sus tags y fields, y que es comun a todo punto. Es el diagrama principal del modelo de datos. |
 | `influxdb-flujo.mmd` | El recorrido del dato: Node-RED lo genera, lo firma y lo valida, lo escribe en InfluxDB, y la interfaz lo recupera por la API REST con consultas Flux. |
-| `despliegue.puml` | **Diagrama de despliegue**: Vercel, navegador, Render e InfluxDB Cloud, con el protocolo de cada tramo. |
+| `despliegue.puml` | **Diagrama de despliegue**: el equipo del usuario (navegador, Vite, Node-RED con `flows.local.json`) y lo publicado (Vercel y Render), los dos contra InfluxDB Cloud. Docker queda fuera: es opcional y no es el camino en uso. |
 | `componentes.puml` | **Diagrama de componentes**: las piezas de la interfaz y de Node-RED, con las interfaces que se ofrecen (notacion de bola) y la base de datos. |
 | `clases.puml` | **Diagrama de clases**: la jerarquia del adaptador de telemetria, el contrato de mensajes, el estado de la casa y los dos stores. |
 | `png/` | Todos los diagramas ya renderizados, con fondo blanco, para pegarlos en una presentacion o en el documento. Se regeneran con los comandos de mas abajo; si cambias un `.mmd` o un `.puml`, vuelve a generarlos. |
