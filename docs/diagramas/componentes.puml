@@ -55,9 +55,11 @@ package "Interfaz web · React · publicada en Vercel" {
 
 package "Node-RED en Render · flows.render.json" {
   component "Control del handshake\norigen permitido · conexiones por IP" as handshake
+  component "Parsear comando\nforma · tamaño · frecuencia" as parse
   component "Autorizar sesión" as auth
   component "Enrutador por kind" as router
-  component "Manejadores de órdenes\nluces · puertas · PIR · aire\nenchufes · escenas · reloj" as handlers
+  component "Manejadores de órdenes\nluces · puertas · PIR · aire · enchufes\nescenas · reloj · snapshot · sensores" as handlers
+  component "Estado del servicio" as salud
   component "Seguridad" as seg
   component "Simulación cada 1 s\nhumo · clima · energía" as simul
   component "Alertas" as alertas
@@ -72,12 +74,15 @@ package "Node-RED en Render · flows.render.json" {
   component "Monitor del pipeline" as monitor
   interface "/ws/casa-iot" as IWs
   interface "/api/history" as IHist
+  interface "/api/health" as ISalud
 
   handshake -up- IWs
   filtro -up- IWs
   api -up- IHist
+  salud -up- ISalud
 
-  handshake --> auth : "conexiones aceptadas"
+  handshake --> parse : "conexiones aceptadas"
+  parse --> auth : "mensajes bien formados"
   auth --> router : "órdenes autorizadas"
   auth --> audit : "rechazos"
   auth --> bus : "rol, confirmación\ny rechazo"
