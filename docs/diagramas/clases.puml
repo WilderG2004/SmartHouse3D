@@ -123,10 +123,37 @@ package "Contrato de mensajes" {
 package "Estado de la casa" {
   class "Estado de la casa" as HouseSnapshot {
     +vistaReducida : lógico
-    +movimiento : por sensor
-    +consumo : vatios y kWh
-    +mundo : hora y temperatura exterior
-    +eventos : lista
+  }
+
+  class "Detector de movimiento" as PirState {
+    +movimiento : lógico
+    +últimoDisparo : instante
+  }
+
+  class "Consumo" as PowerState {
+    +vatios : número
+    +kWhTotal : número
+  }
+
+  class "Desglose del consumo" as PowerBreakdown {
+    +base : número
+    +luces : número
+    +aires : número
+    +enchufes : número
+  }
+
+  class "Mundo" as WorldState {
+    +hora : 0 a 24
+    +temperaturaExterior : número
+    +horaForzada : lógico
+  }
+
+  class "Evento" as SystemEvent {
+    +id : texto
+    +instante : número
+    +nivel : info | aviso | crítico
+    +origen : texto
+    +mensaje : texto
   }
 
   class "Luz" as LightState {
@@ -189,6 +216,11 @@ package "Estado de la casa" {
   }
 
   HouseSnapshot *-- "0..*" ActiveAlert : alertas
+  HouseSnapshot *-- "0..*" PirState : movimiento
+  HouseSnapshot *-- "0..1" PowerState : consumo
+  HouseSnapshot *-- "1" WorldState : mundo
+  HouseSnapshot *-- "0..*" SystemEvent : eventos
+  PowerState *-- "0..1" PowerBreakdown : desglose
   HouseSnapshot *-- "0..*" LightState : luces
   HouseSnapshot *-- "0..*" DoorState : puertas
   HouseSnapshot *-- "0..*" AcState : aires
