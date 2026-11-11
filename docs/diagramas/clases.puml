@@ -1,0 +1,187 @@
+@startuml clases
+title SmartHouse3D · Diagrama de clases
+
+skinparam backgroundColor White
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 14
+skinparam roundcorner 6
+skinparam ArrowColor #334155
+skinparam ArrowFontSize 12
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam package {
+  BackgroundColor #F8FAFC
+  BorderColor #475569
+}
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #94A3B8
+}
+
+package "Canal de datos" {
+  interface TelemetryAdapter {
+    +mode : simulated | websocket
+    +enforcesSessions : boolean
+    +secureTransport : boolean
+    +connect()
+    +disconnect()
+    +subscribe(listener) : unsubscribe
+    +send(cmd : DeviceCommand)
+    +pair(key : string)
+    +unpair()
+    +confirm(code : string)
+    +revokeOthers()
+  }
+
+  abstract class BaseAdapter {
+    -listeners : Set<Listener>
+    +subscribe(listener) : unsubscribe
+    #emit(msg)
+  }
+
+  class WebSocketAdapter {
+    +mode = websocket
+    -ws : WebSocket
+    -retry : number
+    -pendingKey : string
+    +connect()
+    +send(cmd)
+    -normalize(raw)
+  }
+
+  class SimulatedAdapter {
+    +mode = simulated
+    +connect()
+    +send(cmd)
+  }
+
+  BaseAdapter ..|> TelemetryAdapter
+  WebSocketAdapter --|> BaseAdapter
+  SimulatedAdapter --|> BaseAdapter
+}
+
+package "Contrato de mensajes" {
+  class TelemetryMessage <<union>> {
+    snapshot · light · smoke · pir
+    door · power · climate · ac
+    plug · security · alert · event
+    pipeline · connection
+  }
+
+  class DeviceCommand <<union>> {
+    light.set · door.set · ac.set
+    plug.set · security.set
+    scene.apply · world.setHour
+    smoke.simulate · pir.simulate
+  }
+
+  class SessionMessage <<union>> {
+    session : rol vigente
+    confirm : código de un solo uso
+    reject : motivo del rechazo
+  }
+
+  enum SessionRole {
+    lector
+    operador
+    administrador
+  }
+}
+
+package "Estado de la casa" {
+  class HouseSnapshot {
+    +restricted : boolean
+    +pir : Record<id, PirState>
+    +power : PowerState
+    +world : WorldState
+    +events : SystemEvent[]
+  }
+
+  class LightState {
+    +id : string
+    +on : boolean
+    +intensity : number
+    +color : string
+  }
+
+  class DoorState {
+    +open : boolean
+  }
+
+  class AcState {
+    +id : string
+    +on : boolean
+    +mode : cool | fan
+    +setpoint : number
+    +running : boolean
+    +watts : number
+  }
+
+  class PlugState {
+    +id : string
+    +on : boolean
+    +watts : number
+    +kwh : number
+  }
+
+  class RoomClimate {
+    +temperature : number
+    +humidity : number
+    +lux : number
+  }
+
+  class SmokeState {
+    +ppm : number
+    +alarm : boolean
+    +simulating : boolean
+  }
+
+  class SecurityState {
+    +mode : SecurityMode
+    +alarm : boolean
+    +cause : string
+  }
+
+  enum SecurityMode {
+    disarmed
+    home
+    away
+  }
+
+  HouseSnapshot *-- "0..*" LightState : lights
+  HouseSnapshot *-- "0..*" DoorState : doors
+  HouseSnapshot *-- "0..*" AcState : acs
+  HouseSnapshot *-- "0..*" PlugState : plugs
+  HouseSnapshot *-- "0..*" RoomClimate : climate
+  HouseSnapshot *-- "1" SmokeState : smoke
+  HouseSnapshot *-- "0..1" SecurityState : security
+  SecurityState --> SecurityMode
+}
+
+package "Estado en la interfaz" {
+  class HouseStore {
+    +connection : ConnectionStatus
+    +restricted : boolean
+    +apply(msg : TelemetryMessage)
+    +seedHistory(seed)
+  }
+
+  class SessionStore {
+    +role : SessionRole
+    +user : string
+    +pair(key : string)
+    +logout()
+    +handle(msg : SessionMessage)
+  }
+}
+
+TelemetryAdapter ..> DeviceCommand : "envía"
+TelemetryAdapter ..> TelemetryMessage : "recibe"
+TelemetryAdapter ..> SessionMessage : "recibe"
+TelemetryMessage ..> HouseSnapshot : "snapshot"
+HouseStore ..> TelemetryMessage : "apply()"
+SessionStore ..> SessionMessage : "handle()"
+SessionStore --> SessionRole
+
+@enduml
