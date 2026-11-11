@@ -1,6 +1,11 @@
 @startuml clases
-' Los nombres se muestran en español; el alias de cada clase es el nombre real
-' que tiene en el código (src/types/iot.ts y src/services/telemetry/).
+' Comprobado en el codigo. Los nombres se muestran en español; el alias de cada
+' clase es el identificador real:
+'   src/services/telemetry/TelemetryAdapter.ts  interfaz y clase abstracta
+'   src/services/telemetry/WebSocketAdapter.ts  SimulatedAdapter.ts  pairingKey.ts
+'   src/hooks/useTelemetry.ts                   fachada «commands»
+'   src/store/useHouseStore.ts  useSessionStore.ts  useUiStore.ts
+'   src/types/iot.ts                            contrato de datos
 title SmartHouse3D · Diagrama de clases
 
 skinparam backgroundColor White
@@ -24,6 +29,7 @@ skinparam class {
 package "Canal de datos" {
   interface "Adaptador de telemetría" as TelemetryAdapter {
     +origen : simulado | WebSocket
+    +etiqueta : texto
     +mandaElServidor : lógico
     +canalCifrado : lógico
     +conectar()
@@ -38,12 +44,16 @@ package "Canal de datos" {
 
   abstract class "Adaptador base" as BaseAdapter {
     -oyentes : conjunto
+    +mandaElServidor = falso
+    +canalCifrado = nulo
     +suscribir(oyente) : cancelar
     #emitir(mensaje)
   }
 
   class "Adaptador WebSocket" as WebSocketAdapter {
     +origen = WebSocket
+    +etiqueta = Node-RED (WebSocket)
+    +mandaElServidor = verdadero
     -conexión : WebSocket
     -reintentos : número
     -clavePendiente : texto
@@ -54,13 +64,21 @@ package "Canal de datos" {
 
   class "Adaptador simulado" as SimulatedAdapter {
     +origen = simulado
+    +etiqueta = SIMULACIÓN LOCAL
     +conectar()
     +enviar(orden)
+  }
+
+  class "Clave de la pestaña" as pairingKey <<módulo>> {
+    +leer() : texto
+    +guardar(clave)
+    +borrar()
   }
 
   BaseAdapter ..|> TelemetryAdapter
   WebSocketAdapter --|> BaseAdapter
   SimulatedAdapter --|> BaseAdapter
+  WebSocketAdapter --> pairingKey : "sessionStorage"
 }
 
 package "Contrato de mensajes" {
@@ -72,10 +90,10 @@ package "Contrato de mensajes" {
   }
 
   class "Orden" as DeviceCommand <<unión>> {
-    encender luz · abrir puerta
-    ajustar aire · encender enchufe
-    armar alarma · aplicar escena
-    cambiar la hora · simular humo
+    light.set · door.set · ac.set
+    plug.set · security.set
+    scene.apply · world.setHour
+    smoke.simulate · pir.simulate
   }
 
   class "Mensaje de sesión" as SessionMessage <<unión>> {
@@ -116,6 +134,7 @@ package "Estado de la casa" {
     +encendido : lógico
     +modo : frío | ventilador
     +consigna : número
+    +ventilador : baja | media | alta
     +compresor : lógico
     +vatios : número
   }
@@ -162,22 +181,42 @@ package "Estado de la casa" {
 }
 
 package "Estado en la interfaz" {
+  class "Órdenes" as commands <<módulo>> {
+    +encenderLuz(id, cambios)
+    +abrirPuerta(id, abierta)
+    +ajustarAire(id, cambios)
+    +armarAlarma(modo)
+    +aplicarEscena(id)
+    -comprobarRol(orden)
+  }
+
   class "Almacén de la casa" as HouseStore {
     +conexión : estado del enlace
     +vistaReducida : lógico
     +aplicar(mensaje de telemetría)
     +sembrarHistorial(datos)
+    +limpiarEventos()
   }
 
   class "Almacén de sesión" as SessionStore {
     +rol : Rol de sesión
     +usuario : texto
+    +confirmaciones : pendientes
     +emparejar(clave : texto)
     +cerrarSesión()
     +atender(mensaje de sesión)
   }
+
+  class "Almacén de la pantalla" as UiStore {
+    +capas : visibles
+    +paredes : modo
+    +rangoHistorial : en vivo | 15 min | 1 h | 24 h
+    +recorriendo : lógico
+  }
 }
 
+commands ..> TelemetryAdapter : "enviar()"
+commands ..> SessionStore : "comprueba el rol"
 TelemetryAdapter ..> DeviceCommand : "envía"
 TelemetryAdapter ..> TelemetryMessage : "recibe"
 TelemetryAdapter ..> SessionMessage : "recibe"

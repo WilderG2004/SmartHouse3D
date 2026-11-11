@@ -1,4 +1,6 @@
 @startuml componentes
+' Cableado comprobado en infra/nodered/tools/build-flows.mts (secciones A-F)
+' y en los 36 nodos de infra/nodered/src/*.js. Nombres tomados de sus cabeceras @name.
 title SmartHouse3D · Diagrama de componentes
 
 skinparam backgroundColor White
@@ -10,7 +12,7 @@ skinparam componentStyle uml2
 skinparam ArrowColor #334155
 skinparam ArrowFontSize 12
 skinparam nodesep 35
-skinparam ranksep 55
+skinparam ranksep 50
 skinparam package {
   BackgroundColor #F8FAFC
   BorderColor #475569
@@ -46,37 +48,48 @@ package "Interfaz web · React" {
   estado --> casa
 }
 
-package "Node-RED" {
+package "Node-RED · flujo generado" {
   component "Autorizar sesión" as auth
-  component "Órdenes" as ordenes
+  component "Enrutador por kind" as router
+  component "Manejadores de órdenes\nluces · puertas · PIR · aire\nenchufes · escenas · reloj" as handlers
   component "Seguridad" as seg
-  component "Simulación" as simul
+  component "Simulación cada 1 s\nhumo · clima · energía" as simul
   component "Alertas" as alertas
+  component "Bus de telemetría" as bus
   component "Filtro de privacidad" as filtro
-  component "Preparar puntos" as prepara
-  component "Firma y validación" as valida
+  component "Preparar lecturas" as prepara
+  component "Guardar cambios y eventos" as eventos
+  component "Firmar telemetría" as firma
+  component "Validar telemetría" as valida
   component "Auditoría" as audit
   component "API historial" as api
+  component "Monitor del pipeline" as monitor
   interface "/ws/casa-iot" as IWs
   interface "/api/history" as IHist
 
   auth -up- IWs
   filtro -up- IWs
   api -up- IHist
-  auth --> ordenes
-  auth --> seg
+
+  auth --> router : "órdenes autorizadas"
   auth --> audit : "rechazos"
+  router --> handlers
+  router --> seg
+  handlers --> bus
+  seg --> bus
+  seg ..> router : "órdenes internas"
+  handlers ..> router : "escenas y temporizadores"
   simul --> alertas
-  ordenes --> filtro
-  seg --> filtro
-  simul --> filtro
-  alertas --> filtro
-  ordenes --> prepara
-  seg --> prepara
-  simul --> prepara
+  simul --> bus
+  alertas --> bus
   alertas --> prepara
-  prepara --> valida
+  bus --> filtro
+  bus --> eventos
+  prepara --> firma
+  eventos --> firma
+  firma --> valida
   valida --> audit : "cuarentena"
+  monitor --> bus : "estado del pipeline"
 }
 
 database "Bucket de datos" as bdatos
@@ -84,9 +97,10 @@ database "Bucket de huellas" as bhuellas
 
 adaptador ..> IWs : "envía órdenes\nrecibe telemetría"
 graficas ..> IHist : "15 min · 1 h · 24 h"
-valida ..> bdatos : "puntos"
-valida ..> bhuellas : "huellas"
-audit ..> bdatos : "auditoría"
+valida ..> bdatos : "puntos aceptados"
+valida ..> bhuellas : "huella cada 5 min"
+audit ..> bdatos : "auditoría y cuarentena"
 api ..> bdatos : "consulta Flux"
+monitor ..> bdatos : "relee lo guardado"
 
 @enduml

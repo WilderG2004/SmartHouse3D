@@ -56,7 +56,7 @@ node "Vercel · CDN" <<servidor en la nube>> {
   artifact "vercel.json\nCSP, HSTS, X-Frame-Options" as vercelCsp
 }
 
-node "Render · región Virginia · plan free" <<servidor en la nube>> {
+node "Render · región Virginia · plan free\ncomprobación de salud: GET /api/health" <<servidor en la nube>> {
   node "Contenedor Docker\nnodered/node-red:5.0.8-24 · Node 24" <<contenedor>> {
     artifact "Flujo Casa IoT\nflows.render.json\ndentro de la imagen, solo lectura" as flujoProd
     artifact "settings.js endurecido\neditor APAGADO" as settingsProd
