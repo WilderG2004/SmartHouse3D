@@ -12,4 +12,4 @@
 
 ## Y las pruebas de rechazo?
 
-Las 65 pruebas de ataque (`npm run seguridad:probar`) **no** viven aqui: necesitan un Node-RED encendido y las claves de `infra/.env`. Ver `infra/README.md`, seccion "Seguridad: los comandos".
+Las 63 pruebas de ataque (`npm run seguridad:probar`) **no** viven aqui: necesitan un Node-RED encendido y las claves de `infra/.env`. Ver `infra/README.md`, seccion "Seguridad: los comandos".

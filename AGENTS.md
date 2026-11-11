@@ -35,7 +35,7 @@ Cada carpeta tiene su propio `README.md` que explica cada archivo (empieza por `
   - **No agregues otro canal de control** (MQTT directo, REST sin firma, etc.) que se salte el WebSocket autorizado: se elimino el adaptador MQTT por eso.
   - **Todo punto que llega a InfluxDB** pasa por `86-firmar-telemetria.js` y `87-validar-telemetria.js`; si agregas una medicion, agregala al `schema` de la politica con sus rangos.
   - **Imagenes de Docker con version fija**, nunca `latest`. Puertos solo en `127.0.0.1` (o el proxy de `infra/despliegue/`).
-  - Despues de cambiar la seguridad, ejecuta `npm run seguridad:probar` (65 pruebas de rechazo contra un Node-RED propio; lee las claves de `infra/.env`; las B solo corren con `CASA_INGEST=on` y A15 solo con `--incluir-revocar`) y deja pasar todas.
+  - Despues de cambiar la seguridad, ejecuta `npm run seguridad:probar` (63 pruebas de rechazo contra un Node-RED propio; lee las claves de `infra/.env`; las B solo corren con `CASA_INGEST=on` y A15 solo con `--incluir-revocar`) y deja pasar todas.
   - Node-RED se enciende **siempre** con `npm run nodered:iniciar`, nunca con `node-red` a secas (ese usa `~/.node-red`, escucha en `0.0.0.0` y deja el editor sin contrasena).
 - **Nunca** imprimas, registres ni guardes en archivos los tokens de InfluxDB. No los metas en commits.
   Si alguien te pega un token en el chat, no lo uses ni lo repitas: avisale que debe revocarlo y crear otro.

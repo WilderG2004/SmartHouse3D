@@ -311,7 +311,7 @@ curl.exe -s http://127.0.0.1:1880/auth/login                                    
 curl.exe -s -o NUL -w "%{http_code}\n" http://127.0.0.1:1880/flows                # debe dar 401
 ```
 
-Y las **65 pruebas de rechazo** (simulan ataques: usalas **solo** contra tu propio Node-RED; durante ~1 minuto no podras emparejar porque
+Y las **63 pruebas de rechazo** (simulan ataques: usalas **solo** contra tu propio Node-RED; durante ~1 minuto no podras emparejar porque
 prueba 5 claves malas, y dejan puntos de prueba con `room=prueba`):
 
 ```powershell
