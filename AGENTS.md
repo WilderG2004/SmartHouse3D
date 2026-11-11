@@ -60,6 +60,7 @@ Cada carpeta tiene su propio `README.md` que explica cada archivo (empieza por `
 | Borrar de `infra/.env` el token de administrador de InfluxDB | `npm run seguridad:secretos -- --olvidar-admin` |
 | Encender Node-RED local con settings endurecidos | `npm run nodered:iniciar` |
 | Pruebas de rechazo de seguridad (solo contra Node-RED propio) | `npm run seguridad:probar` |
+| Comprobar los tres modos de la alarma (sin Node-RED encendido) | `npm run seguridad:modos` |
 | Verificar la integridad del historial | `npm run seguridad:integridad` |
 | Generar `vercel.json` con la CSP del backend | `npm run seguridad:vercel -- --backend casa-api.midominio.com` |
 | Regenerar el flujo de Render (`infra/nodered/flows.render.json`) tras cambiar el flujo | `npm run render:flujo` |

@@ -140,6 +140,12 @@ export interface DoorDef {
   dir?: 1 | -1
   /** true = tiene un Empty `id` en el modelo (muestra etiqueta flotante) */
   sensor?: boolean
+  /**
+   * Detector que despierta esta puerta al abrirse CON LA ALARMA ARMADA (en casa o fuera): se registra movimiento y se
+   * enciende su luz unos segundos. No hace sonar la alarma; eso solo lo hacen las puertas con `sensor` (el perímetro).
+   * Con la alarma desarmada, abrir la puerta no enciende nada.
+   */
+  pir?: string
 }
 
 export const DOOR_OPEN_ANGLE = Math.PI / 2 // 90°
@@ -147,16 +153,18 @@ export const DOOR_OPEN_ANGLE = Math.PI / 2 // 90°
 export const DOORS: DoorDef[] = [
   { id: 'Sensor_Puerta_Entrada', label: 'Puerta de entrada', mesh: 'Cube032', handle: 'Plano009', kind: 'swing', dir: 1, sensor: true }, // hacia la sala de entrada
   { id: 'Sensor_Puerta_Garage', label: 'Puerta del garaje', mesh: 'Cube037', kind: 'slide', sensor: true },
-  { id: 'Puerta_Sala_Principal', label: 'Entrada · Sala principal', mesh: 'Cube016', handle: 'Plano001', kind: 'swing', dir: 1 }, // hacia la sala principal
-  { id: 'Puerta_Cocina', label: 'Entrada · Cocina', mesh: 'Cube030', handle: 'Plano008', kind: 'swing', dir: -1 }, // cocina → lavandería
-  { id: 'Puerta_Lavanderia_2', label: 'Entrada · Lavandería 2', mesh: 'Cube028', handle: 'Plano007', kind: 'swing', dir: -1 },
-  { id: 'Puerta_Lavanderia', label: 'Entrada · Lavandería', mesh: 'Cube026', handle: 'Plano006', kind: 'swing', dir: -1 }, // → garaje
-  { id: 'Puerta_Dormitorio_Principal', label: 'Entrada · Dormitorio principal', mesh: 'Cube020', handle: 'Plano003', kind: 'swing', dir: 1 }, // hacia el dormitorio
-  { id: 'Puerta_Dormitorio_Principal_Interior', label: 'Interior · Dormitorio principal', mesh: 'Cube018', handle: 'Plano002', kind: 'swing', dir: 1 }, // hacia el closet
-  { id: 'Puerta_Dormitorio_3', label: 'Interior · Dormitorio 3', mesh: 'Cube022', handle: 'Plano004', kind: 'swing', dir: 1 }, // hacia el dormitorio
-  { id: 'Puerta_Sala_Estudio', label: 'Interior · Sala de estudio', mesh: 'Cube024', handle: 'Plano005', kind: 'swing', dir: 1 }, // hacia el estudio
-  { id: 'Puerta_Bano_Visitas', label: 'Interior · Baño de visitas', mesh: 'Cube034', handle: 'Plano010', kind: 'swing', dir: 1 }, // hacia el baño principal
-  { id: 'Puerta_Pasillo', label: 'Interior · Pasillo', mesh: 'Cube036', handle: 'Plano011', kind: 'swing', dir: 1 }, // hacia el baño de visitas
+  { id: 'Puerta_Sala_Principal', label: 'Entrada · Sala principal', mesh: 'Cube016', handle: 'Plano001', kind: 'swing', dir: 1, pir: 'Sensor_PIR_Entrada_Sala_Principal' }, // hacia la sala principal
+  { id: 'Puerta_Cocina', label: 'Entrada · Cocina', mesh: 'Cube030', handle: 'Plano008', kind: 'swing', dir: -1, pir: 'Sensor_PIR_Entrada_Cocina' }, // cocina → lavandería
+  { id: 'Puerta_Lavanderia_2', label: 'Entrada · Lavandería 2', mesh: 'Cube028', handle: 'Plano007', kind: 'swing', dir: -1, pir: 'Sensor_PIR_Entrada_Lavaneria_2' },
+  { id: 'Puerta_Lavanderia', label: 'Entrada · Lavandería', mesh: 'Cube026', handle: 'Plano006', kind: 'swing', dir: -1, pir: 'Sensor_PIR_Entrada_Lavaneria' }, // → garaje
+  { id: 'Puerta_Dormitorio_Principal', label: 'Entrada · Dormitorio principal', mesh: 'Cube020', handle: 'Plano003', kind: 'swing', dir: 1, pir: 'Sensor_PIR_Entrada_Dormitorio_Principal' }, // hacia el dormitorio
+  // Las cinco puertas interiores no tienen un detector propio: les toca el más cercano, que medido en el modelo
+  // (planta, sin contar la altura) es siempre el del dormitorio principal, entre 4 y 11 unidades.
+  { id: 'Puerta_Dormitorio_Principal_Interior', label: 'Interior · Dormitorio principal', mesh: 'Cube018', handle: 'Plano002', kind: 'swing', dir: 1, pir: 'Sensor_PIR_Entrada_Dormitorio_Principal' }, // hacia el closet
+  { id: 'Puerta_Dormitorio_3', label: 'Interior · Dormitorio 3', mesh: 'Cube022', handle: 'Plano004', kind: 'swing', dir: 1, pir: 'Sensor_PIR_Entrada_Dormitorio_Principal' }, // hacia el dormitorio
+  { id: 'Puerta_Sala_Estudio', label: 'Interior · Sala de estudio', mesh: 'Cube024', handle: 'Plano005', kind: 'swing', dir: 1, pir: 'Sensor_PIR_Entrada_Dormitorio_Principal' }, // hacia el estudio
+  { id: 'Puerta_Bano_Visitas', label: 'Interior · Baño de visitas', mesh: 'Cube034', handle: 'Plano010', kind: 'swing', dir: 1, pir: 'Sensor_PIR_Entrada_Dormitorio_Principal' }, // hacia el baño principal
+  { id: 'Puerta_Pasillo', label: 'Interior · Pasillo', mesh: 'Cube036', handle: 'Plano011', kind: 'swing', dir: 1, pir: 'Sensor_PIR_Entrada_Dormitorio_Principal' }, // hacia el baño de visitas
 ]
 
 /* ──────────────────────────── Medidor de energía ──────────────────────────── */

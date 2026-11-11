@@ -18,7 +18,8 @@
     "seguridad:probar": "node infra/pruebas-seguridad.mjs",
     "seguridad:integridad": "node infra/verificar-integridad.mjs",
     "seguridad:vercel": "node infra/despliegue/generar-vercel-json.mjs",
-    "influx:simulado": "node infra/pruebas/influx-simulado.mjs"
+    "influx:simulado": "node infra/pruebas/influx-simulado.mjs",
+    "seguridad:modos": "node infra/pruebas/modos-alarma.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

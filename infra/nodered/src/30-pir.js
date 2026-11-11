@@ -11,8 +11,10 @@ S.pirUntil[def.id] = now + cfg.PIR_HOLD_MS;
 out.push({ type: 'pir', ts: now, id: def.id, motion: true });
 if (!was) log('info', def.label, 'Movimiento detectado');
 
-// Con la casa armada «fuera de casa», cualquier movimiento es una intrusión
-if (S.security.mode === 'away') cmds.push({ kind: 'security.trigger', cause: 'Movimiento en ' + def.label });
+// Con la casa armada «fuera de casa», cualquier movimiento es una intrusión.
+// Excepción: `silent` (lo pone «Puertas» al abrirse una puerta interior con la alarma armada). Ahí solo queremos
+// registrar el movimiento y encender la luz; la alarma la reservamos para el perímetro.
+if (S.security.mode === 'away' && !cmd.silent) cmds.push({ kind: 'security.trigger', cause: 'Movimiento en ' + def.label });
 
 const auto = S.pirAuto[def.id] || (S.pirAuto[def.id] = []);
 for (const lightId of def.lightIds) {

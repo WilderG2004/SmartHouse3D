@@ -37,7 +37,7 @@ const cfg = {
   SMOKE: H.SMOKE,
   PIRS: H.PIRS,
   PIR_HOLD_MS: H.PIR_HOLD_MS,
-  DOORS: H.DOORS.map((d) => ({ id: d.id, label: d.label, sensor: !!d.sensor })),
+  DOORS: H.DOORS.map((d) => ({ id: d.id, label: d.label, sensor: !!d.sensor, pir: d.pir ?? null })),
   METER: H.METER,
   CLIMATE: H.CLIMATE,
   AC_POWER: H.AC_POWER,
