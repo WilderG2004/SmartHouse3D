@@ -1,13 +1,12 @@
 @startuml despliegue
-' Comprobado contra el codigo:
-'   vite.config.ts            puerto 5173
-'   public/Iot_Casa.glb       modelo 3D
-'   infra/nodered/flows.local.json   Node-RED local -> InfluxDB Cloud
-'   render.yaml               servicio casa-iot-nodered, plan free, region virginia
-'   infra/nodered/Dockerfile.render  imagen nodered/node-red:5.0.8-24
-'   vercel.json               connect-src wss:// y https:// casa-iot-nodered.onrender.com
-'   build-flows.mts           WS_PATH /ws/casa-iot, API /api
-' Docker (infra/docker-compose.yml, flows.json -> http://influxdb:8086) queda fuera: es opcional.
+' Despliegue del sistema PUBLICADO. Una sola instancia de cada cosa.
+' Comprobado en:
+'   vercel.json                      CSP: wss:// y https:// casa-iot-nodered.onrender.com
+'   render.yaml                      servicio casa-iot-nodered, plan free, Virginia, /api/health
+'   infra/nodered/Dockerfile.render  imagen nodered/node-red:5.0.8-24 (Node 24)
+'   infra/nodered/flows.render.json  org Dev Teams, buckets Casa_IoT y Casa_IoT_integridad
+'   infra/nodered/tools/build-flows.mts   rutas /ws/casa-iot y /api
+'   src/config/house.config.ts       MODEL_URL = /Iot_Casa.glb
 title SmartHouse3D · Diagrama de despliegue
 
 skinparam backgroundColor White
@@ -17,8 +16,8 @@ skinparam defaultFontSize 13
 skinparam roundcorner 8
 skinparam ArrowColor #334155
 skinparam ArrowFontSize 11
-skinparam nodesep 40
-skinparam ranksep 65
+skinparam nodesep 45
+skinparam ranksep 70
 skinparam node {
   BackgroundColor #F8FAFC
   BorderColor #475569
@@ -32,57 +31,35 @@ skinparam database {
   BorderColor #1D4ED8
 }
 
-node "Computador del usuario (Windows)" <<dispositivo>> {
-
+node "Dispositivo del usuario" <<dispositivo>> {
   node "Navegador web\nChrome, Edge, etc." <<entorno de ejecución>> {
-    artifact "Interfaz de la casa\nReact + visor 3D (Three.js)" as ui
-  }
-
-  node "Node.js" <<entorno de ejecución>> {
-    artifact "Servidor Vite · puerto 5173\nentrega la página\ny el modelo Iot_Casa.glb" as vite
-    artifact "Instaladores\nsetup-local.mjs\nredeploy-flow.mjs" as inst
-  }
-
-  node "Node-RED · 127.0.0.1:1880" <<entorno de ejecución>> {
-    artifact "Flujo Casa IoT\nflows.local.json\nsimula los datos, calcula\nalertas, guarda y consulta" as flujoLocal
-    artifact "settings.js endurecido\neditor con contraseña" as settingsLocal
-    artifact "infra/.env\nclaves y tokens\nignorado por Git" as envLocal
-    artifact "Nodo\nnode-red-contrib-influxdb" as nodoInflux
+    artifact "Interfaz en ejecución\nReact + Three.js" as ui
   }
 }
 
-node "Vercel · CDN" <<servidor en la nube>> {
-  artifact "Interfaz compilada\nReact + Vite" as vercelUi
-  artifact "vercel.json\nCSP, HSTS, X-Frame-Options" as vercelCsp
+node "Vercel · CDN" <<servidor>> {
+  artifact "Interfaz compilada\nHTML, JS, CSS\ny el modelo Iot_Casa.glb" as dist
+  artifact "vercel.json\nCSP, HSTS, X-Frame-Options" as csp
 }
 
-node "Render · región Virginia · plan free\ncomprobación de salud: GET /api/health" <<servidor en la nube>> {
+node "Render · Virginia · plan free\nsalud: GET /api/health" <<servidor>> {
   node "Contenedor Docker\nnodered/node-red:5.0.8-24 · Node 24" <<contenedor>> {
-    artifact "Flujo Casa IoT\nflows.render.json\ndentro de la imagen, solo lectura" as flujoProd
-    artifact "settings.js endurecido\neditor APAGADO" as settingsProd
-    artifact "flows_cred.json\nsolo referencias a los tokens" as credProd
+    artifact "Node-RED\nflows.render.json\nsolo lectura, editor apagado" as nodered
+    artifact "flows_cred.json\nsolo referencias a los tokens" as cred
   }
 }
 
-node "InfluxDB Cloud · AWS us-east-1" <<servidor en la nube>> {
-  node "InfluxDB 2.x" <<entorno de ejecución>> {
-    database "Bucket de datos\nretención 30 días" as bdatos
-    database "Bucket de huellas\nretención 90 días" as bhuellas
+node "InfluxDB Cloud · AWS us-east-1" <<servidor>> {
+  node "InfluxDB 2.x · org Dev Teams" <<entorno de ejecución>> {
+    database "Casa_IoT\nretención 30 días" as bdatos
+    database "Casa_IoT_integridad\nretención 90 días" as bhuellas
   }
 }
 
-' ── en desarrollo, todo en el mismo equipo ──
-ui --> vite : "http://localhost:5173\npágina y modelo 3D"
-ui --> flujoLocal : "ws://localhost:1880/ws/casa-iot\nhttp://localhost:1880/api"
-inst --> flujoLocal : "HTTP 1880\ninstala el flujo"
-flujoLocal --> nodoInflux : "pasa lecturas\ny consultas"
-nodoInflux --> bdatos : "HTTPS 443 · org casa\nbucket Casa_IoT"
-nodoInflux --> bhuellas : "HTTPS 443\nbucket casa_iot_integridad"
-
-' ── publicado: el mismo navegador contra la nube ──
-ui --> vercelUi : "https://…vercel.app\npágina y modelo 3D"
-ui --> flujoProd : "wss://casa-iot-nodered.onrender.com/ws/casa-iot\nhttps://casa-iot-nodered.onrender.com/api"
-flujoProd --> bdatos : "HTTPS 443 · org Dev Teams\nbucket Casa_IoT"
-flujoProd --> bhuellas : "HTTPS 443\nbucket Casa_IoT_integridad"
+dist ..> ui : "<<deploy>>\nHTTPS 443\nel navegador la descarga\ny la ejecuta"
+ui --> nodered : "wss://casa-iot-nodered.onrender.com/ws/casa-iot\ndatos en vivo y órdenes"
+ui --> nodered : "https://casa-iot-nodered.onrender.com/api/history\nhistorial, con Authorization: Bearer"
+nodered --> bdatos : "HTTPS 443\nescribe con un token\ny consulta con otro"
+nodered --> bhuellas : "HTTPS 443\nhuellas de integridad"
 
 @enduml
