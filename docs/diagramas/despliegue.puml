@@ -56,7 +56,7 @@ node "InfluxDB Cloud · AWS us-east-1" <<servidor>> {
   }
 }
 
-dist ..> ui : "<<deploy>>\nHTTPS 443\nel navegador la descarga\ny la ejecuta"
+ui --> dist : "HTTPS 443\nla descarga al abrir la página\ny la ejecuta"
 ui --> nodered : "wss://casa-iot-nodered.onrender.com/ws/casa-iot\ndatos en vivo y órdenes"
 ui --> nodered : "https://casa-iot-nodered.onrender.com/api/history\nhistorial, con Authorization: Bearer"
 nodered --> bdatos : "HTTPS 443\nescribe con un token\ny consulta con otro"
